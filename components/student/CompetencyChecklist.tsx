@@ -11,7 +11,7 @@ import {
 } from '@/lib/survey-questions'
 import { saveCompetencyAnswers } from '@/app/actions/checklist'
 import PostSaveFlow from './PostSaveFlow'
-import { type ExperienceData } from '@/lib/types'
+import { type Day1Data } from '@/lib/types'
 
 const MAX_SCORES = calcMaxScores()
 const JOB_ORDER: JobType[] = ['performance', 'content', 'brand', 'growth', 'crm', 'ae']
@@ -67,12 +67,12 @@ const CustomTick = ({ x, y, payload }: any) => {
 
 type Props = {
   initialAnswers: Record<string, number>
-  initialExperiences: ExperienceData
+  initialDay1: Day1Data
   sessionRound: number
   studentName: string
 }
 
-export default function CompetencyChecklist({ initialAnswers, initialExperiences, sessionRound, studentName }: Props) {
+export default function CompetencyChecklist({ initialAnswers, initialDay1, sessionRound, studentName }: Props) {
   const [answers, setAnswers] = useState<Record<string, number>>(initialAnswers)
   const [saved, setSaved] = useState(Object.keys(initialAnswers).length > 0)
   const [isPending, startTransition] = useTransition()
@@ -381,9 +381,9 @@ export default function CompetencyChecklist({ initialAnswers, initialExperiences
         <PostSaveFlow
           studentName={studentName}
           topJob={topJob}
-          jobPct={jobPercents[topJob]}
+          topJobPct={jobPercents[topJob]}
           sessionRound={sessionRound}
-          initialExperiences={initialExperiences}
+          initialDay1={initialDay1}
           onClose={() => setShowFlow(false)}
         />
       )}

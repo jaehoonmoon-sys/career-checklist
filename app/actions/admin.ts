@@ -1,8 +1,9 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase'
 import { calcJobScores, calcMaxScores, type JobType } from '@/lib/survey-questions'
-import { type ExperienceData } from '@/lib/types'
+import { type ExperienceData, type Day1Data, type Day23Data, type Day5Data } from '@/lib/types'
 
 const MAX_SCORES = calcMaxScores()
 const JOB_KEYS: JobType[] = ['performance', 'content', 'brand', 'growth', 'crm', 'ae']
@@ -18,6 +19,12 @@ export type StudentRow = {
   answered_count: number
   updated_at: string | null
   experiences: Partial<ExperienceData> | null
+  stage: number
+  tutor_comment_1: string | null
+  tutor_comment_2: string | null
+  day1_data: Partial<Day1Data> | null
+  day23_data: Partial<Day23Data> | null
+  day5_data: Partial<Day5Data> | null
 }
 
 const EMPTY_PCTS: Record<JobType, number> = {
@@ -35,7 +42,9 @@ export async function getAdminOverview(): Promise<StudentRow[]> {
       .order('student_name'),
     adminClient
       .from('cc_checklist_responses')
-      .select('student_id, competency_answers, common_experiences, updated_at')
+      .select(
+        'student_id, competency_answers, common_experiences, updated_at, stage, tutor_comment_1, tutor_comment_2, day1_data, day23_data, day5_data'
+      )
       .eq('session_round', 1),
   ])
 
@@ -51,6 +60,10 @@ export async function getAdminOverview(): Promise<StudentRow[]> {
     const experiences = (resp?.common_experiences as Partial<ExperienceData>) ?? null
     const hasExperiences = experiences && Object.values(experiences).some(v => v && String(v).trim())
 
+    const day1_data = (resp?.day1_data as Partial<Day1Data>) ?? null
+    const day23_data = (resp?.day23_data as Partial<Day23Data>) ?? null
+    const day5_data = (resp?.day5_data as Partial<Day5Data>) ?? null
+
     if (answered_count === 0) {
       return {
         id: s.id,
@@ -63,6 +76,12 @@ export async function getAdminOverview(): Promise<StudentRow[]> {
         answered_count: 0,
         updated_at: resp?.updated_at ?? null,
         experiences: hasExperiences ? experiences : null,
+        stage: resp?.stage ?? 0,
+        tutor_comment_1: resp?.tutor_comment_1 ?? null,
+        tutor_comment_2: resp?.tutor_comment_2 ?? null,
+        day1_data,
+        day23_data,
+        day5_data,
       }
     }
 
@@ -84,6 +103,36 @@ export async function getAdminOverview(): Promise<StudentRow[]> {
       answered_count,
       updated_at: resp?.updated_at ?? null,
       experiences: hasExperiences ? experiences : null,
+      stage: resp?.stage ?? 0,
+      tutor_comment_1: resp?.tutor_comment_1 ?? null,
+      tutor_comment_2: resp?.tutor_comment_2 ?? null,
+      day1_data,
+      day23_data,
+      day5_data,
     }
   })
+}
+
+export async function saveTutorComment(
+  studentId: number,
+  sessionRound: number,
+  commentNum: 1 | 2,
+  comment: string
+): Promise<{ success: boolean; error?: string }> {
+  const adminClient = createAdminClient()
+
+  const updateData = commentNum === 1
+    ? { tutor_comment_1: comment.trim(), stage: 2 }
+    : { tutor_comment_2: comment.trim(), stage: 4 }
+
+  const { error } = await adminClient
+    .from('cc_checklist_responses')
+    .update(updateData)
+    .eq('student_id', studentId)
+    .eq('session_round', sessionRound)
+
+  if (error) return { success: false, error: '저장 중 오류가 발생했습니다.' }
+
+  revalidatePath('/admin')
+  return { success: true }
 }

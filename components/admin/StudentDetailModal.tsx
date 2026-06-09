@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis,
   PolarRadiusAxis, ResponsiveContainer,
@@ -9,6 +10,7 @@ import {
   QUESTIONS, CATEGORIES, ANSWER_OPTIONS,
   JOB_LABELS, JOB_LABELS_FLAT, type JobType,
 } from '@/lib/survey-questions'
+import { saveTutorComment } from '@/app/actions/admin'
 import type { StudentRow } from '@/app/actions/admin'
 
 const JOB_ORDER: JobType[] = ['performance', 'content', 'brand', 'growth', 'crm', 'ae']
@@ -40,16 +42,18 @@ const CustomTick = ({ x, y, payload }: any) => {
   )
 }
 
+const STAGE_LABELS = ['체크리스트', 'DAY 1', '1차 면담', 'DAY 2+3', '2차 면담', '최종 정리', '완료']
+
 type Props = {
   student: StudentRow
   onClose: () => void
 }
 
 export default function StudentDetailModal({ student, onClose }: Props) {
-  const { answers, top_job, job_pcts, student_name, answered_count, cohort, experiences } = student
+  const { answers, top_job, job_pcts, student_name, answered_count, cohort, stage } = student
   const chartColor = top_job ? JOB_COLORS[top_job] : '#94a3b8'
-  const [tab, setTab] = useState<'checklist' | 'experience'>('checklist')
-  const hasExperiences = !!experiences
+  const [tab, setTab] = useState<'checklist' | 'journey'>('checklist')
+  const hasJourneyData = (stage ?? 0) > 0 || !!student.day1_data || !!student.experiences
 
   const radarData = JOB_ORDER.map(job => ({
     subject: JOB_LABELS[job],
@@ -139,6 +143,7 @@ export default function StudentDetailModal({ student, onClose }: Props) {
                 {JOB_LABELS_FLAT[top_job]}
               </span>
             )}
+            <StageBadge stage={stage ?? 0} />
             <span className="shrink-0 text-[11px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full hidden sm:inline">
               관리자 보기
             </span>
@@ -157,12 +162,12 @@ export default function StudentDetailModal({ student, onClose }: Props) {
             }`}>
             📋 체크리스트
           </button>
-          <button onClick={() => setTab('experience')}
+          <button onClick={() => setTab('journey')}
             className={`py-2.5 px-2 text-xs font-medium border-b-2 transition-colors flex items-center gap-1 ${
-              tab === 'experience' ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-400 hover:text-slate-600'
+              tab === 'journey' ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-400 hover:text-slate-600'
             }`}>
-            📝 경험 정리
-            {hasExperiences && (
+            🗺️ 진행 현황
+            {hasJourneyData && (
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
             )}
           </button>
@@ -170,33 +175,20 @@ export default function StudentDetailModal({ student, onClose }: Props) {
 
         {/* 컨텐츠 */}
         <div className="flex-1 overflow-y-auto">
-          {/* 경험 정리 탭 */}
-          {tab === 'experience' && (
-            <div className="px-5 py-5 max-w-2xl">
-              {hasExperiences ? (
-                <ExperienceReadOnly exp={experiences!} />
-              ) : (
-                <div className="text-center py-12 text-slate-400">
-                  <p className="text-3xl mb-2">📝</p>
-                  <p className="text-sm">아직 경험 정리를 작성하지 않았어요</p>
-                </div>
-              )}
+          {tab === 'journey' && (
+            <div className="px-5 py-5 max-w-2xl space-y-5">
+              <JourneyView student={student} />
             </div>
           )}
 
-          {/* 체크리스트 탭 */}
           {tab === 'checklist' && <>
-          {/* 모바일: 차트 상단 */}
           <div className="lg:hidden px-4 pt-4">{rightPanel}</div>
-
           <div className="px-4 py-5 lg:flex lg:gap-5 lg:items-start">
-            {/* 질문 목록 */}
             <div className="flex-1 min-w-0 space-y-4">
               {CATEGORIES.map(cat => {
                 const catQs = QUESTIONS.filter(q => q.category === cat.key)
                 if (!catQs.length) return null
                 const catDone = catQs.filter(q => answers[q.id] !== undefined).length
-
                 return (
                   <div key={cat.key} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                     <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center gap-2">
@@ -209,7 +201,6 @@ export default function StudentDetailModal({ student, onClose }: Props) {
                         const sel = answers[q.id]
                         const isAnswered = sel !== undefined
                         const optColor = isAnswered ? OPTION_COLORS[sel] : null
-
                         return (
                           <div key={q.id} className="px-5 py-3">
                             <div className="flex items-start gap-3">
@@ -257,8 +248,6 @@ export default function StudentDetailModal({ student, onClose }: Props) {
                 )
               })}
             </div>
-
-            {/* 데스크톱 sticky 오른쪽 */}
             <div className="hidden lg:block w-[280px] shrink-0 sticky top-0"
               style={{ maxHeight: 'calc(100vh - 105px)', overflowY: 'auto' }}>
               {rightPanel}
@@ -271,49 +260,228 @@ export default function StudentDetailModal({ student, onClose }: Props) {
   )
 }
 
-// ── 경험 정리 읽기 전용 뷰 ────────────────────────────────────────
+// ── 진행 현황 탭 ──────────────────────────────────────────────────
 
-const EXP_FIELDS: { key: string; label: string; emoji: string }[] = [
-  { key: 'work',        label: '일 / 알바 / 직장 경험',       emoji: '💼' },
-  { key: 'school',      label: '학교 / 학습 경험',             emoji: '🎓' },
-  { key: 'personal',    label: '개인 활동',                    emoji: '🌱' },
-  { key: 'energy_flow', label: '몰입했던 순간',                emoji: '⚡' },
-  { key: 'good_at',     label: '잘한다고 느꼈던 순간',         emoji: '✨' },
-  { key: 'dislike',     label: '하기 싫었던 것 + 이유',        emoji: '😣' },
-  { key: 'strengths',   label: '나의 강점 3가지',              emoji: '💪' },
-  { key: 'target_job_1','label': '1순위 목표 직무 & 이유',     emoji: '🥇' },
-  { key: 'target_job_2','label': '2순위 목표 직무 & 이유',     emoji: '🥈' },
-  { key: 'industries',  label: '관심 산업 & 일하고 싶은 환경', emoji: '🏢' },
-  { key: 'target_jd_url','label': '목표 JD 링크',             emoji: '📄' },
-  { key: 'target_jd_note','label': 'JD 관련 메모',            emoji: '📝' },
-]
-
-function ExperienceReadOnly({ exp }: { exp: Partial<Record<string, string>> }) {
-  const filled = EXP_FIELDS.filter(f => exp[f.key]?.trim())
-  if (!filled.length) {
-    return (
-      <div className="text-center py-12 text-slate-400">
-        <p className="text-sm">작성된 내용이 없어요</p>
-      </div>
-    )
+function StageBadge({ stage }: { stage: number }) {
+  const config: Record<number, { label: string; color: string }> = {
+    0: { label: 'DAY1 준비 중', color: '#94a3b8' },
+    1: { label: 'DAY1 완료 · 1차 면담 대기', color: '#f97316' },
+    2: { label: 'DAY2+3 진행 중', color: '#3b82f6' },
+    3: { label: 'DAY2+3 완료 · 2차 면담 대기', color: '#f97316' },
+    4: { label: '최종 정리 중', color: '#8b5cf6' },
+    5: { label: '전체 완료 ✅', color: '#10b981' },
   }
+  const c = config[stage] ?? config[0]
+  return (
+    <span className="shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full border"
+      style={{ color: c.color, borderColor: `${c.color}50`, backgroundColor: `${c.color}10` }}>
+      {c.label}
+    </span>
+  )
+}
+
+function JourneyView({ student }: { student: StudentRow }) {
+  const router = useRouter()
+  const [comment, setComment] = useState('')
+  const [isPending, startTransition] = useTransition()
+  const [saveResult, setSaveResult] = useState<{ ok?: boolean; error?: string } | null>(null)
+
+  const currentStage = student.stage ?? 0
+  const needsComment1 = currentStage === 1
+  const needsComment2 = currentStage === 3
+
+  const handleSave = (num: 1 | 2) => {
+    if (!comment.trim()) return
+    startTransition(async () => {
+      const result = await saveTutorComment(student.id, 1, num, comment)
+      if (result.success) {
+        setSaveResult({ ok: true })
+        setComment('')
+        setTimeout(() => { router.refresh() }, 1000)
+      } else {
+        setSaveResult({ error: result.error })
+      }
+    })
+  }
+
+  // 진행 단계 스테퍼
+  const STEPS = ['체크리스트', 'DAY 1', '1차 면담', 'DAY 2+3', '2차 면담', '최종 정리']
+  const completedUpTo = currentStage
+
   return (
     <div className="space-y-5">
-      {filled.map(f => (
-        <div key={f.key}>
-          <p className="text-xs font-semibold text-slate-600 mb-1.5">{f.emoji} {f.label}</p>
-          {f.key === 'target_jd_url' ? (
-            <a href={exp[f.key]} target="_blank" rel="noopener noreferrer"
-              className="text-sm text-blue-600 underline break-all">
-              {exp[f.key]}
-            </a>
-          ) : (
-            <div className="bg-slate-50 rounded-xl px-4 py-3 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
-              {exp[f.key]}
-            </div>
-          )}
+      {/* 진행 단계 */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-4">
+        <p className="text-xs font-semibold text-slate-600 mb-3">진행 단계</p>
+        <div className="flex items-center gap-0 flex-wrap gap-y-2">
+          {STEPS.map((label, i) => {
+            const done = i < completedUpTo
+            const active = i === completedUpTo
+            return (
+              <div key={i} className="flex items-center">
+                <div className="flex flex-col items-center">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold
+                    ${done ? 'bg-emerald-500 text-white' :
+                      active ? 'bg-slate-900 text-white' :
+                      'bg-slate-100 text-slate-400'}`}>
+                    {done ? '✓' : i + 1}
+                  </div>
+                  <span className="text-[9px] text-slate-400 mt-0.5 whitespace-nowrap">{label}</span>
+                </div>
+                {i < STEPS.length - 1 && (
+                  <div className={`w-6 h-0.5 mb-3.5 ${i < completedUpTo ? 'bg-emerald-400' : 'bg-slate-200'}`} />
+                )}
+              </div>
+            )
+          })}
         </div>
-      ))}
+      </div>
+
+      {/* 튜터 코멘트 입력 영역 */}
+      {(needsComment1 || needsComment2) && (
+        <div className="bg-white rounded-2xl border border-orange-100 p-4">
+          <p className="text-xs font-semibold text-orange-600 mb-1">
+            💬 {needsComment1 ? '1차 면담 후 코멘트 남기기' : '2차 면담 후 코멘트 남기기'}
+          </p>
+          <p className="text-xs text-slate-400 mb-3">
+            {needsComment1
+              ? '코멘트를 저장하면 수강생에게 DAY 2+3이 열립니다.'
+              : '코멘트를 저장하면 수강생에게 최종 정리(DAY 5)가 열립니다.'}
+          </p>
+          <textarea
+            value={comment}
+            onChange={e => setComment(e.target.value)}
+            rows={4}
+            placeholder="면담 내용 요약, 다음 단계 가이드, 추가 고려 사항 등..."
+            className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300 resize-none mb-3"
+          />
+          {saveResult && (
+            <p className={`text-xs mb-2 ${saveResult.ok ? 'text-emerald-600' : 'text-red-500'}`}>
+              {saveResult.ok ? '✓ 저장됐어요! 페이지가 새로고침됩니다.' : saveResult.error}
+            </p>
+          )}
+          <button
+            onClick={() => handleSave(needsComment1 ? 1 : 2)}
+            disabled={isPending || !comment.trim()}
+            className="w-full bg-slate-900 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-40">
+            {isPending ? '저장 중...' : `코멘트 저장 → ${needsComment1 ? 'DAY 2+3' : 'DAY 5'} 열기`}
+          </button>
+        </div>
+      )}
+
+      {/* 기존 튜터 코멘트 (읽기 전용) */}
+      {student.tutor_comment_1 && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-4">
+          <p className="text-xs font-semibold text-slate-600 mb-2">💬 1차 면담 코멘트</p>
+          <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{student.tutor_comment_1}</p>
+        </div>
+      )}
+      {student.tutor_comment_2 && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-4">
+          <p className="text-xs font-semibold text-slate-600 mb-2">💬 2차 면담 코멘트</p>
+          <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{student.tutor_comment_2}</p>
+        </div>
+      )}
+
+      {/* DAY 1 데이터 */}
+      {student.day1_data && Object.values(student.day1_data).some(v => v?.trim()) && (
+        <DayDataBlock title="📅 DAY 1 | 나의 경험 꺼내기" fields={[
+          { key: 'work', label: '💼 일/알바/직장 경험' },
+          { key: 'school', label: '🎓 학교/학습 경험' },
+          { key: 'personal', label: '🌱 개인 활동' },
+          { key: 'camp_projects', label: '🏕️ 캠프 경험' },
+          { key: 'energy_flow', label: '⚡ 몰입했던 순간' },
+          { key: 'good_at', label: '✨ 잘한다고 느꼈던 순간' },
+          { key: 'dislike', label: '😣 하기 싫었던 것' },
+          { key: 'today_discovery', label: '✅ 오늘의 발견' },
+        ]} data={student.day1_data as Record<string, string>} />
+      )}
+
+      {/* DAY 2+3 데이터 */}
+      {student.day23_data && Object.values(student.day23_data).some(v => v && String(v).trim()) && (
+        <DayDataBlock title="📅 DAY 2+3 | 마케터 탐색 + 취업 방향" fields={[
+          { key: 'curriculum_notes', label: '📚 커리큘럼 흥미로웠던 것' },
+          { key: 'work_style', label: '🎯 업무 스타일' },
+          { key: 'strengths', label: '💪 강점 초안' },
+          { key: 'marketer_sentence', label: '✍️ 한 문장 완성' },
+          { key: 'target_job_1', label: '🥇 1순위 직무' },
+          { key: 'target_job_2', label: '🥈 2순위 직무' },
+          { key: 'industries', label: '🏭 관심 산업' },
+          { key: 'work_environment', label: '🏢 일하고 싶은 환경' },
+          { key: 'target_jd_url', label: '📄 목표 JD 링크' },
+          { key: 'target_jd_note', label: '📝 JD 메모' },
+          { key: 'compass_draft', label: '🧭 취업 나침반 초안' },
+        ]} data={student.day23_data as Record<string, string>} />
+      )}
+
+      {/* DAY 5 데이터 */}
+      {student.day5_data && Object.values(student.day5_data).some(v => v && String(v).trim()) && (
+        <DayDataBlock title="📅 DAY 5 | 나의 취업 나침반 완성" fields={[
+          { key: 'compass_who', label: '🙋 나는 어떤 사람인가' },
+          { key: 'compass_where', label: '🎯 나는 어디로 가는가' },
+          { key: 'compass_why', label: '💬 나는 왜 이 방향인가' },
+          { key: 'future_efforts', label: '💭 앞으로의 노력' },
+        ]} data={student.day5_data as Record<string, string>} />
+      )}
+
+      {/* 레거시 경험 데이터 */}
+      {student.experiences && !student.day1_data && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-4">
+          <p className="text-xs font-semibold text-slate-500 mb-3">📄 이전 버전 경험 정리 데이터</p>
+          {Object.entries(student.experiences)
+            .filter(([, v]) => v?.trim())
+            .map(([k, v]) => (
+              <div key={k} className="mb-3 last:mb-0">
+                <p className="text-xs font-semibold text-slate-500 mb-1">{k}</p>
+                <div className="bg-slate-50 rounded-xl px-3 py-2.5 text-sm text-slate-700 whitespace-pre-wrap">
+                  {v}
+                </div>
+              </div>
+            ))}
+        </div>
+      )}
+
+      {/* 아무 데이터 없을 때 */}
+      {!student.day1_data && !student.experiences && currentStage === 0 && (
+        <div className="text-center py-10 text-slate-400">
+          <p className="text-3xl mb-2">📝</p>
+          <p className="text-sm">아직 경험 정리를 작성하지 않았어요</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DayDataBlock({ title, fields, data }: {
+  title: string
+  fields: { key: string; label: string }[]
+  data: Record<string, string>
+}) {
+  const filled = fields.filter(f => data[f.key]?.trim())
+  if (!filled.length) return null
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+      <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+        <p className="text-xs font-semibold text-slate-700">{title}</p>
+      </div>
+      <div className="p-4 space-y-4">
+        {filled.map(f => (
+          <div key={f.key}>
+            <p className="text-xs font-semibold text-slate-500 mb-1">{f.label}</p>
+            {f.key === 'target_jd_url' ? (
+              <a href={data[f.key]} target="_blank" rel="noopener noreferrer"
+                className="text-sm text-blue-600 underline break-all">
+                {data[f.key]}
+              </a>
+            ) : (
+              <div className="bg-slate-50 rounded-xl px-3 py-2.5 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                {data[f.key]}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

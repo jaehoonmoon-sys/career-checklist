@@ -2,7 +2,12 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getStudentResponse } from '@/app/actions/checklist'
 import CompetencyChecklist from '@/components/student/CompetencyChecklist'
-import { type ExperienceData, EMPTY_EXPERIENCE } from '@/lib/types'
+import CareerJourneyView from '@/components/student/CareerJourneyView'
+import { EMPTY_DAY1, EMPTY_DAY23, EMPTY_DAY5, type Day1Data, type Day23Data, type Day5Data } from '@/lib/types'
+import { calcJobScores, calcMaxScores, type JobType } from '@/lib/survey-questions'
+
+const JOB_KEYS: JobType[] = ['performance', 'content', 'brand', 'growth', 'crm', 'ae']
+const MAX_SCORES = calcMaxScores()
 
 export default async function StudentPage() {
   const cookieStore = await cookies()
@@ -17,13 +22,48 @@ export default async function StudentPage() {
   const response = await getStudentResponse(sessionRound)
   const initialAnswers: Record<string, number> =
     (response?.competency_answers as Record<string, number>) ?? {}
-  const initialExperiences: ExperienceData =
-    { ...EMPTY_EXPERIENCE, ...((response?.common_experiences as Partial<ExperienceData>) ?? {}) }
+  const hasAnswers = Object.keys(initialAnswers).length > 0
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stage: number = (response as any)?.stage ?? 0
+
+  // stage >= 1이면 커리어 여정 뷰 (체크리스트 이후 단계)
+  if (hasAnswers && stage >= 1) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const resp = response as any
+    const day1Data: Day1Data = { ...EMPTY_DAY1, ...(resp?.day1_data ?? {}) }
+    const day23Data: Day23Data = { ...EMPTY_DAY23, ...(resp?.day23_data ?? {}) }
+    const day5Data: Day5Data = { ...EMPTY_DAY5, ...(resp?.day5_data ?? {}) }
+
+    const scores = calcJobScores(initialAnswers)
+    const topJob = JOB_KEYS.reduce((a, b) => scores[a] >= scores[b] ? a : b)
+    const topJobPct = Math.max(0, Math.round((scores[topJob] / MAX_SCORES[topJob]) * 100))
+
+    return (
+      <CareerJourneyView
+        stage={stage}
+        studentName={studentName ?? ''}
+        sessionRound={sessionRound}
+        topJob={topJob}
+        topJobPct={topJobPct}
+        day1Data={day1Data}
+        day23Data={day23Data}
+        day5Data={day5Data}
+        tutorComment1={resp?.tutor_comment_1 ?? null}
+        tutorComment2={resp?.tutor_comment_2 ?? null}
+      />
+    )
+  }
+
+  // stage=0: 체크리스트 화면 (+ 완료 후 DAY1 폼)
+  const initialDay1: Day1Data = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ...EMPTY_DAY1, ...((response as any)?.day1_data ?? {}),
+  }
 
   return (
     <CompetencyChecklist
       initialAnswers={initialAnswers}
-      initialExperiences={initialExperiences}
+      initialDay1={initialDay1}
       sessionRound={sessionRound}
       studentName={studentName ?? ''}
     />

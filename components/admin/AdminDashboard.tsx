@@ -211,11 +211,20 @@ function FilterChip({ label, active, onClick, color }: {
   )
 }
 
+const STAGE_BADGE: Record<number, { label: string; color: string }> = {
+  1: { label: 'DAY1 완료 ⏳', color: '#f97316' },
+  2: { label: 'DAY2+3 진행', color: '#3b82f6' },
+  3: { label: 'DAY2+3 완료 ⏳', color: '#f97316' },
+  4: { label: '최종 정리 중', color: '#8b5cf6' },
+  5: { label: '전체 완료 ✅', color: '#10b981' },
+}
+
 function StudentCard({ student, onClick }: {
   student: StudentRow
   onClick?: () => void
 }) {
-  const { student_name, completed, top_job, job_pcts, answered_count, cohort } = student
+  const { student_name, completed, top_job, job_pcts, answered_count, cohort, stage } = student
+  const stageBadge = (stage ?? 0) > 0 ? STAGE_BADGE[stage ?? 0] : null
 
   return (
     <div
@@ -230,6 +239,13 @@ function StudentCard({ student, onClick }: {
         <p className="font-semibold text-slate-800 text-sm leading-tight truncate">{student_name}</p>
         <span className="shrink-0 text-[10px] text-slate-400">{cohort}</span>
       </div>
+
+      {stageBadge && (
+        <span className="inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full border mb-2"
+          style={{ color: stageBadge.color, borderColor: `${stageBadge.color}50`, backgroundColor: `${stageBadge.color}10` }}>
+          {stageBadge.label}
+        </span>
+      )}
 
       {completed && top_job ? (
         <>
