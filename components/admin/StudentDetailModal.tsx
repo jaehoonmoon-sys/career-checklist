@@ -282,24 +282,30 @@ function StageBadge({ stage }: { stage: number }) {
 
 function JourneyView({ student }: { student: StudentRow }) {
   const router = useRouter()
-  const [comment, setComment] = useState('')
   const [isPending, startTransition] = useTransition()
-  const [saveResult, setSaveResult] = useState<{ ok?: boolean; error?: string } | null>(null)
+
+  const [comment1, setComment1] = useState(student.tutor_comment_1 ?? '')
+  const [editing1, setEditing1] = useState(!student.tutor_comment_1)
+  const [saveResult1, setSaveResult1] = useState<{ ok?: boolean; error?: string } | null>(null)
+
+  const [comment2, setComment2] = useState(student.tutor_comment_2 ?? '')
+  const [editing2, setEditing2] = useState(!student.tutor_comment_2)
+  const [saveResult2, setSaveResult2] = useState<{ ok?: boolean; error?: string } | null>(null)
 
   const currentStage = student.stage ?? 0
-  const needsComment1 = currentStage === 1
-  const needsComment2 = currentStage === 3
 
   const handleSave = (num: 1 | 2) => {
-    if (!comment.trim()) return
+    const val = num === 1 ? comment1 : comment2
+    if (!val.trim()) return
     startTransition(async () => {
-      const result = await saveTutorComment(student.id, 1, num, comment)
+      const result = await saveTutorComment(student.id, 1, num, val, currentStage)
       if (result.success) {
-        setSaveResult({ ok: true })
-        setComment('')
+        if (num === 1) { setSaveResult1({ ok: true }); setEditing1(false) }
+        else { setSaveResult2({ ok: true }); setEditing2(false) }
         setTimeout(() => { router.refresh() }, 1000)
       } else {
-        setSaveResult({ error: result.error })
+        if (num === 1) setSaveResult1({ error: result.error })
+        else setSaveResult2({ error: result.error })
       }
     })
   }
@@ -337,49 +343,101 @@ function JourneyView({ student }: { student: StudentRow }) {
         </div>
       </div>
 
-      {/* 튜터 코멘트 입력 영역 */}
-      {(needsComment1 || needsComment2) && (
-        <div className="bg-white rounded-2xl border border-orange-100 p-4">
-          <p className="text-xs font-semibold text-orange-600 mb-1">
-            💬 {needsComment1 ? '1차 면담 후 코멘트 남기기' : '2차 면담 후 코멘트 남기기'}
-          </p>
-          <p className="text-xs text-slate-400 mb-3">
-            {needsComment1
-              ? '코멘트를 저장하면 수강생에게 DAY 2+3이 열립니다.'
-              : '코멘트를 저장하면 수강생에게 최종 정리(DAY 5)가 열립니다.'}
-          </p>
-          <textarea
-            value={comment}
-            onChange={e => setComment(e.target.value)}
-            rows={4}
-            placeholder="면담 내용 요약, 다음 단계 가이드, 추가 고려 사항 등..."
-            className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300 resize-none mb-3"
-          />
-          {saveResult && (
-            <p className={`text-xs mb-2 ${saveResult.ok ? 'text-emerald-600' : 'text-red-500'}`}>
-              {saveResult.ok ? '✓ 저장됐어요! 페이지가 새로고침됩니다.' : saveResult.error}
+      {/* 1차 면담 코멘트 (stage >= 1) */}
+      {currentStage >= 1 && (
+        <div className={`bg-white rounded-2xl border p-4 ${editing1 ? 'border-orange-100' : 'border-slate-100'}`}>
+          <div className="flex items-center justify-between mb-1">
+            <p className={`text-xs font-semibold ${editing1 ? 'text-orange-600' : 'text-slate-600'}`}>
+              💬 1차 면담 코멘트
             </p>
+            {!editing1 && (
+              <button onClick={() => setEditing1(true)} className="text-xs text-slate-400 hover:text-slate-600 underline">
+                수정
+              </button>
+            )}
+          </div>
+          {editing1 ? (
+            <>
+              <p className="text-xs text-slate-400 mb-3">코멘트를 저장하면 수강생에게 DAY 2+3이 열립니다.</p>
+              <textarea
+                value={comment1}
+                onChange={e => setComment1(e.target.value)}
+                rows={4}
+                placeholder="면담 내용 요약, 다음 단계 가이드, 추가 고려 사항 등..."
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300 resize-none mb-3"
+              />
+              {saveResult1 && (
+                <p className={`text-xs mb-2 ${saveResult1.ok ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {saveResult1.ok ? '✓ 저장됐어요! 페이지가 새로고침됩니다.' : saveResult1.error}
+                </p>
+              )}
+              <div className="flex gap-2">
+                {student.tutor_comment_1 && (
+                  <button onClick={() => { setEditing1(false); setComment1(student.tutor_comment_1 ?? '') }}
+                    className="flex-1 border border-slate-200 text-slate-600 font-semibold py-2.5 rounded-xl text-sm">
+                    취소
+                  </button>
+                )}
+                <button
+                  onClick={() => handleSave(1)}
+                  disabled={isPending || !comment1.trim()}
+                  className="flex-1 bg-slate-900 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-40">
+                  {isPending ? '저장 중...' : student.tutor_comment_1 ? '수정 저장' : '코멘트 저장 → DAY 2+3 열기'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{comment1}</p>
           )}
-          <button
-            onClick={() => handleSave(needsComment1 ? 1 : 2)}
-            disabled={isPending || !comment.trim()}
-            className="w-full bg-slate-900 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-40">
-            {isPending ? '저장 중...' : `코멘트 저장 → ${needsComment1 ? 'DAY 2+3' : 'DAY 5'} 열기`}
-          </button>
         </div>
       )}
 
-      {/* 기존 튜터 코멘트 (읽기 전용) */}
-      {student.tutor_comment_1 && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-4">
-          <p className="text-xs font-semibold text-slate-600 mb-2">💬 1차 면담 코멘트</p>
-          <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{student.tutor_comment_1}</p>
-        </div>
-      )}
-      {student.tutor_comment_2 && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-4">
-          <p className="text-xs font-semibold text-slate-600 mb-2">💬 2차 면담 코멘트</p>
-          <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{student.tutor_comment_2}</p>
+      {/* 2차 면담 코멘트 (stage >= 3) */}
+      {currentStage >= 3 && (
+        <div className={`bg-white rounded-2xl border p-4 ${editing2 ? 'border-orange-100' : 'border-slate-100'}`}>
+          <div className="flex items-center justify-between mb-1">
+            <p className={`text-xs font-semibold ${editing2 ? 'text-orange-600' : 'text-slate-600'}`}>
+              💬 2차 면담 코멘트
+            </p>
+            {!editing2 && (
+              <button onClick={() => setEditing2(true)} className="text-xs text-slate-400 hover:text-slate-600 underline">
+                수정
+              </button>
+            )}
+          </div>
+          {editing2 ? (
+            <>
+              <p className="text-xs text-slate-400 mb-3">코멘트를 저장하면 수강생에게 최종 정리(DAY 5)가 열립니다.</p>
+              <textarea
+                value={comment2}
+                onChange={e => setComment2(e.target.value)}
+                rows={4}
+                placeholder="면담 내용 요약, 다음 단계 가이드, 추가 고려 사항 등..."
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300 resize-none mb-3"
+              />
+              {saveResult2 && (
+                <p className={`text-xs mb-2 ${saveResult2.ok ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {saveResult2.ok ? '✓ 저장됐어요! 페이지가 새로고침됩니다.' : saveResult2.error}
+                </p>
+              )}
+              <div className="flex gap-2">
+                {student.tutor_comment_2 && (
+                  <button onClick={() => { setEditing2(false); setComment2(student.tutor_comment_2 ?? '') }}
+                    className="flex-1 border border-slate-200 text-slate-600 font-semibold py-2.5 rounded-xl text-sm">
+                    취소
+                  </button>
+                )}
+                <button
+                  onClick={() => handleSave(2)}
+                  disabled={isPending || !comment2.trim()}
+                  className="flex-1 bg-slate-900 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-40">
+                  {isPending ? '저장 중...' : student.tutor_comment_2 ? '수정 저장' : '코멘트 저장 → DAY 5 열기'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{comment2}</p>
+          )}
         </div>
       )}
 

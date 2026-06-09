@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { JOB_LABELS_FLAT, type JobType } from '@/lib/survey-questions'
-import { saveDay23, saveDay5, skipTutorComment1 } from '@/app/actions/checklist'
+import { saveDay23, saveDay5, skipTutorComment1, rollbackStage, type RollbackTarget } from '@/app/actions/checklist'
 import {
   type Day1Data, type Day23Data, type Day5Data,
   EMPTY_DAY23, EMPTY_DAY5,
@@ -75,6 +75,7 @@ export default function CareerJourneyView({
   const [currentStage, setCurrentStage] = useState(stage)
   const [showSkipWarning, setShowSkipWarning] = useState(false)
   const [showSlack2, setShowSlack2] = useState(false)
+  const [showRollback, setShowRollback] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   const handleSkip = () => {
@@ -93,7 +94,10 @@ export default function CareerJourneyView({
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
             <span className="text-sm text-slate-500">{studentName}님</span>
             <StageProgress stage={1} />
-            <span className="text-xs text-slate-400">1차 면담 대기</span>
+            <button onClick={() => setShowRollback(true)}
+              className="text-xs text-slate-400 hover:text-amber-600 transition-colors">
+              ↩ 수정하기
+            </button>
           </div>
         </nav>
 
@@ -153,6 +157,9 @@ export default function CareerJourneyView({
             </div>
           </div>
         )}
+        {showRollback && (
+          <RollbackModal currentStage={currentStage} sessionRound={sessionRound} onClose={() => setShowRollback(false)} />
+        )}
       </div>
     )
   }
@@ -160,17 +167,20 @@ export default function CareerJourneyView({
   // ─── Stage 2: DAY2+3 폼 ──────────────────────────────────────
   if (currentStage === 2) {
     return (
-      <Day23FormScreen
-        studentName={studentName}
-        sessionRound={sessionRound}
-        topJob={topJob}
-        initialData={{ ...EMPTY_DAY23, ...day23Data }}
-        tutorComment={tutorComment1}
-        onComplete={() => {
-          setCurrentStage(3)
-          setShowSlack2(true)
-        }}
-      />
+      <>
+        <Day23FormScreen
+          studentName={studentName}
+          sessionRound={sessionRound}
+          topJob={topJob}
+          initialData={{ ...EMPTY_DAY23, ...day23Data }}
+          tutorComment={tutorComment1}
+          onComplete={() => { setCurrentStage(3); setShowSlack2(true) }}
+          onRollbackRequest={() => setShowRollback(true)}
+        />
+        {showRollback && (
+          <RollbackModal currentStage={currentStage} sessionRound={sessionRound} onClose={() => setShowRollback(false)} />
+        )}
+      </>
     )
   }
 
@@ -182,7 +192,10 @@ export default function CareerJourneyView({
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
             <span className="text-sm text-slate-500">{studentName}님</span>
             <StageProgress stage={3} />
-            <span className="text-xs text-slate-400">2차 면담 대기</span>
+            <button onClick={() => setShowRollback(true)}
+              className="text-xs text-slate-400 hover:text-amber-600 transition-colors">
+              ↩ 수정하기
+            </button>
           </div>
         </nav>
 
@@ -213,6 +226,9 @@ export default function CareerJourneyView({
             onClose={() => setShowSlack2(false)}
           />
         )}
+        {showRollback && (
+          <RollbackModal currentStage={currentStage} sessionRound={sessionRound} onClose={() => setShowRollback(false)} />
+        )}
       </div>
     )
   }
@@ -220,13 +236,19 @@ export default function CareerJourneyView({
   // ─── Stage 4: DAY5 최종 폼 ───────────────────────────────────
   if (currentStage === 4) {
     return (
-      <Day5FormScreen
-        studentName={studentName}
-        sessionRound={sessionRound}
-        initialData={{ ...EMPTY_DAY5, ...day5Data }}
-        tutorComment={tutorComment2}
-        onComplete={() => setCurrentStage(5)}
-      />
+      <>
+        <Day5FormScreen
+          studentName={studentName}
+          sessionRound={sessionRound}
+          initialData={{ ...EMPTY_DAY5, ...day5Data }}
+          tutorComment={tutorComment2}
+          onComplete={() => setCurrentStage(5)}
+          onRollbackRequest={() => setShowRollback(true)}
+        />
+        {showRollback && (
+          <RollbackModal currentStage={currentStage} sessionRound={sessionRound} onClose={() => setShowRollback(false)} />
+        )}
+      </>
     )
   }
 
@@ -234,8 +256,12 @@ export default function CareerJourneyView({
   return (
     <div className="min-h-screen bg-slate-50">
       <nav className="bg-white border-b border-slate-100 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex justify-center">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <StageProgress stage={5} />
+          <button onClick={() => setShowRollback(true)}
+            className="text-xs text-slate-400 hover:text-amber-600 transition-colors">
+            ↩ 수정하기
+          </button>
         </div>
       </nav>
       <div className="max-w-md mx-auto px-4 py-16 text-center">
@@ -248,6 +274,9 @@ export default function CareerJourneyView({
           세션에서 더욱 풍부한 활동을 할 수 있을 거예요 💪
         </p>
       </div>
+      {showRollback && (
+        <RollbackModal currentStage={currentStage} sessionRound={sessionRound} onClose={() => setShowRollback(false)} />
+      )}
     </div>
   )
 }
@@ -264,13 +293,14 @@ const DAY23_TABS = [
 type Day23Tab = typeof DAY23_TABS[number]['key']
 type SetDay23Fn = (key: keyof Day23Data) => (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => void
 
-function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutorComment, onComplete }: {
+function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutorComment, onComplete, onRollbackRequest }: {
   studentName: string
   sessionRound: number
   topJob: JobType | null
   initialData: Day23Data
   tutorComment: string | null
   onComplete: () => void
+  onRollbackRequest?: () => void
 }) {
   const [data, setData] = useState<Day23Data>(initialData)
   const [tab, setTab] = useState<Day23Tab>('day2')
@@ -297,7 +327,11 @@ function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutor
         <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between">
           <span className="text-sm text-slate-500">{studentName}님</span>
           <StageProgress stage={2} />
-          <span className="text-xs text-slate-400" />
+          {onRollbackRequest ? (
+            <button onClick={onRollbackRequest} className="text-xs text-slate-400 hover:text-amber-600 transition-colors">
+              ↩ 수정하기
+            </button>
+          ) : <span />}
         </div>
       </nav>
 
@@ -539,12 +573,13 @@ const PRE_CHECKLIST_ITEMS = [
   '나의 취업 나침반 한 장이 완성됐다',
 ]
 
-function Day5FormScreen({ studentName, sessionRound, initialData, tutorComment, onComplete }: {
+function Day5FormScreen({ studentName, sessionRound, initialData, tutorComment, onComplete, onRollbackRequest }: {
   studentName: string
   sessionRound: number
   initialData: Day5Data
   tutorComment: string | null
   onComplete: () => void
+  onRollbackRequest?: () => void
 }) {
   const [data, setData] = useState<Day5Data>(initialData)
   const [isPending, startTransition] = useTransition()
@@ -577,7 +612,11 @@ function Day5FormScreen({ studentName, sessionRound, initialData, tutorComment, 
         <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between">
           <span className="text-sm text-slate-500">{studentName}님</span>
           <StageProgress stage={4} />
-          <span className="text-xs text-slate-400" />
+          {onRollbackRequest ? (
+            <button onClick={onRollbackRequest} className="text-xs text-slate-400 hover:text-amber-600 transition-colors">
+              ↩ 수정하기
+            </button>
+          ) : <span />}
         </div>
       </nav>
 
@@ -676,6 +715,93 @@ function Day5FormScreen({ studentName, sessionRound, initialData, tutorComment, 
           <button onClick={handleSave} disabled={isPending}
             className="w-full bg-slate-900 text-white font-semibold py-3 rounded-xl text-sm disabled:opacity-50">
             {isPending ? '저장 중...' : '🎉 완성! 저장하기'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 단계 롤백 모달
+// ══════════════════════════════════════════════════════════════════
+
+const ROLLBACK_OPTIONS: { target: RollbackTarget; label: string; desc: string; minStage: number }[] = [
+  { target: 'day5',      label: 'DAY5 다시 작성',          desc: 'DAY5 최종 정리 내용이 삭제됩니다.',                                          minStage: 5 },
+  { target: 'day23',     label: 'DAY2+3부터 다시',          desc: 'DAY2+3, DAY5 및 2차 면담 기록이 삭제됩니다.',                               minStage: 3 },
+  { target: 'day1',      label: 'DAY1부터 다시',            desc: 'DAY1 경험 정리, DAY2+3, DAY5, 모든 면담 기록이 삭제됩니다. 체크리스트 답변은 유지됩니다.', minStage: 1 },
+  { target: 'checklist', label: '체크리스트부터 전부 다시', desc: '체크리스트를 포함한 모든 내용이 삭제됩니다.',                                minStage: 0 },
+]
+
+function RollbackModal({ currentStage, sessionRound, onClose }: {
+  currentStage: number
+  sessionRound: number
+  onClose: () => void
+}) {
+  const router = useRouter()
+  const [selected, setSelected] = useState<RollbackTarget | null>(null)
+  const [confirmed, setConfirmed] = useState(false)
+  const [isPending, startTransition] = useTransition()
+
+  const available = ROLLBACK_OPTIONS.filter(o => currentStage >= o.minStage)
+
+  const handleConfirm = () => {
+    if (!selected || !confirmed) return
+    startTransition(async () => {
+      const result = await rollbackStage(sessionRound, selected)
+      if (result.success) {
+        router.refresh()
+        onClose()
+      }
+    })
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+        <h3 className="text-base font-bold text-slate-900 mb-1">어느 단계로 돌아갈까요?</h3>
+        <div className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-4">
+          <p className="text-xs text-amber-700">
+            ⚠️ 선택한 단계부터 저장된 내용이 모두 삭제됩니다. 복구할 수 없으니 신중하게 선택하세요.
+          </p>
+        </div>
+
+        <div className="space-y-2 mb-4">
+          {available.map(opt => (
+            <button key={opt.target}
+              onClick={() => { setSelected(opt.target); setConfirmed(false) }}
+              className={`w-full text-left rounded-xl p-3 border-2 transition-all ${
+                selected === opt.target
+                  ? 'border-red-300 bg-red-50'
+                  : 'border-slate-200 hover:border-slate-300 bg-white'
+              }`}>
+              <p className="text-sm font-semibold text-slate-800">{opt.label}</p>
+              <p className="text-xs text-slate-500 mt-0.5 leading-snug">{opt.desc}</p>
+            </button>
+          ))}
+        </div>
+
+        {selected && (
+          <label className="flex items-start gap-2 cursor-pointer mb-4">
+            <input type="checkbox" checked={confirmed}
+              onChange={e => setConfirmed(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-red-500 shrink-0" />
+            <span className="text-xs text-slate-600 leading-relaxed">
+              선택한 단계의 저장된 내용이 삭제된다는 것을 확인했습니다.
+            </span>
+          </label>
+        )}
+
+        <div className="flex gap-2">
+          <button onClick={onClose}
+            className="flex-1 border border-slate-200 text-slate-600 font-medium py-2.5 rounded-xl text-sm hover:bg-slate-50 transition-colors">
+            취소
+          </button>
+          <button onClick={handleConfirm}
+            disabled={!selected || !confirmed || isPending}
+            className="flex-1 bg-red-500 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-40 hover:bg-red-600 transition-colors">
+            {isPending ? '처리 중...' : '돌아가기'}
           </button>
         </div>
       </div>

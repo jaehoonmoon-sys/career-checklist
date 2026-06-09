@@ -117,13 +117,20 @@ export async function saveTutorComment(
   studentId: number,
   sessionRound: number,
   commentNum: 1 | 2,
-  comment: string
+  comment: string,
+  currentStage?: number
 ): Promise<{ success: boolean; error?: string }> {
   const adminClient = createAdminClient()
 
-  const updateData = commentNum === 1
-    ? { tutor_comment_1: comment.trim(), stage: 2 }
-    : { tutor_comment_2: comment.trim(), stage: 4 }
+  const targetStage = commentNum === 1 ? 2 : 4
+  // 현재 stage가 목표 stage보다 낮을 때만 stage 진행 (수정 시 stage 후퇴 방지)
+  const shouldAdvance = currentStage === undefined || currentStage < targetStage
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updateData: Record<string, any> = {
+    [commentNum === 1 ? 'tutor_comment_1' : 'tutor_comment_2']: comment.trim(),
+  }
+  if (shouldAdvance) updateData.stage = targetStage
 
   const { error } = await adminClient
     .from('cc_checklist_responses')
