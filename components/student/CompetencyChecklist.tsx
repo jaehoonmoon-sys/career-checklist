@@ -98,24 +98,24 @@ export default function CompetencyChecklist({ initialAnswers, sessionRound, stud
   }
 
   const chartCard = (
-    <div className="bg-white rounded-2xl border border-slate-200 p-4">
+    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
       <p className="text-xs text-slate-400 text-center mb-1">직무 지향점</p>
-      <ResponsiveContainer width="100%" height={280}>
-        <RadarChart data={radarData} margin={{ top: 16, right: 36, bottom: 16, left: 36 }}>
+      <ResponsiveContainer width="100%" height={360}>
+        <RadarChart data={radarData} margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
           <PolarGrid gridType="polygon" stroke="#e2e8f0" />
           <PolarAngleAxis dataKey="subject" tick={(props) => <CustomTick {...props} />} />
           <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
           <Radar dataKey="value" stroke={chartColor} fill={chartColor}
-            fillOpacity={0.4} dot={{ r: 4, fill: chartColor }}
+            fillOpacity={0.4} dot={{ r: 5, fill: chartColor }}
             animationDuration={250} animationBegin={0} />
         </RadarChart>
       </ResponsiveContainer>
       {positiveCount > 0 ? (
-        <p className="text-center text-xs font-semibold mt-1" style={{ color: chartColor }}>
+        <p className="text-center text-sm font-semibold mt-2" style={{ color: chartColor }}>
           ✨ {JOB_LABELS[topJob].replace('\n', ' ')} 지향
         </p>
       ) : (
-        <p className="text-center text-xs text-slate-400 mt-1">항목을 선택하면 결과가 나타나요</p>
+        <p className="text-center text-xs text-slate-400 mt-2">항목을 선택하면 결과가 나타나요</p>
       )}
     </div>
   )
@@ -150,20 +150,23 @@ export default function CompetencyChecklist({ initialAnswers, sessionRound, stud
       <div className="lg:hidden max-w-2xl mx-auto px-4 pt-4">{chartCard}</div>
 
       {/* 메인 레이아웃 */}
-      <div className="max-w-5xl mx-auto px-4 pb-32 lg:flex lg:gap-6 lg:items-start">
+      <div className="max-w-5xl mx-auto px-4 pb-32 lg:flex lg:gap-8 lg:items-start">
+
+        {/* 질문 영역 */}
         <div className="flex-1 min-w-0">
           {/* 안내 + 범례 */}
           <div className="py-3">
-            <p className="text-sm text-slate-500 text-center mb-2">
-              경험이 없어도 괜찮아요. 관심·성향·재미를 기준으로 솔직하게 선택해 주세요.
+            <p className="text-sm text-slate-500 text-center mb-1.5">
+              경험이 없어도 괜찮아요. 관심·성향·재미 기준으로 솔직하게 선택해 주세요.
             </p>
-            <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+            {/* 범례 - 한 줄로 표시 */}
+            <div className="flex flex-wrap justify-center gap-x-3 gap-y-0">
               {ANSWER_OPTIONS.map((opt) => (
-                <span key={opt.key} className="text-xs text-slate-500">
-                  <span className={`font-semibold ${opt.key === 0 ? 'text-slate-400' : 'text-slate-700'}`}>
+                <span key={opt.key} className="text-[10px] text-slate-400 whitespace-nowrap">
+                  <span className={`font-semibold ${opt.key === 0 ? 'text-slate-400' : 'text-slate-600'}`}>
                     {opt.label}
                   </span>
-                  {' '}= {opt.desc}
+                  {' '}{opt.desc}
                 </span>
               ))}
             </div>
@@ -183,7 +186,7 @@ export default function CompetencyChecklist({ initialAnswers, sessionRound, stud
                   <span className="ml-auto text-xs text-slate-400">{catAnswered}/{catQuestions.length}</span>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {catQuestions.map((q) => {
                     const selection = answers[q.id]
                     const isPositive = selection !== undefined && selection > 0
@@ -192,13 +195,13 @@ export default function CompetencyChecklist({ initialAnswers, sessionRound, stud
                     return (
                       <div
                         key={q.id}
-                        className={`rounded-xl border px-3 py-2.5 transition-colors ${
+                        className={`rounded-xl border px-3 py-2 transition-colors ${
                           isPositive ? 'border-blue-200 bg-blue-50/40'
                           : isNegative ? 'border-slate-300 bg-slate-50'
                           : 'border-slate-200 bg-white'
                         }`}
                       >
-                        <p className="text-sm text-slate-800 leading-snug mb-2">{q.text}</p>
+                        <p className="text-sm font-semibold text-slate-800 leading-snug mb-1.5">{q.text}</p>
                         <div className="grid grid-cols-5 gap-1">
                           {ANSWER_OPTIONS.map((opt) => {
                             const isSelected = selection === opt.key
@@ -207,7 +210,7 @@ export default function CompetencyChecklist({ initialAnswers, sessionRound, stud
                               <button
                                 key={opt.key}
                                 onClick={() => selectOption(q.id, opt.key)}
-                                className={`py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                                className={`py-1.5 rounded-lg text-[11px] font-medium border transition-all ${
                                   isSelected
                                     ? isHardOption
                                       ? 'bg-slate-400 text-white border-slate-400'
@@ -232,12 +235,14 @@ export default function CompetencyChecklist({ initialAnswers, sessionRound, stud
           })}
         </div>
 
-        {/* 데스크톱 차트 (sticky) */}
-        <div className="hidden lg:block w-80 shrink-0 sticky top-20 pt-4">{chartCard}</div>
+        {/* 데스크톱 차트 — h-screen sticky, 세로 가운데 정렬 */}
+        <div className="hidden lg:flex lg:flex-col lg:justify-center w-[380px] shrink-0 sticky top-0 h-screen pt-[72px] pb-8">
+          {chartCard}
+        </div>
       </div>
 
       {/* 하단 버튼 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 z-10">
         <div className="max-w-5xl mx-auto">
           {saveMsg && (
             <p className="text-center text-sm text-emerald-600 font-medium mb-2">{saveMsg}</p>
