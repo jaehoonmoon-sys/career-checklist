@@ -1,20 +1,34 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { getCompetencyItems, getStudentResponse } from '@/app/actions/checklist'
+import CompetencyChecklist from '@/components/student/CompetencyChecklist'
 
 export default async function StudentPage() {
   const cookieStore = await cookies()
   const role = cookieStore.get('cc_role')?.value
+  const studentId = cookieStore.get('cc_student_id')?.value
   const studentName = cookieStore.get('cc_student_name')?.value
 
-  if (role !== 'student') redirect('/')
+  if (role !== 'student' || !studentId) redirect('/')
+
+  const sessionRound = 1 // 추후 라운드 선택 기능 추가 예정
+
+  const [items, response] = await Promise.all([
+    getCompetencyItems(),
+    getStudentResponse(sessionRound),
+  ])
+
+  const initialAnswers: Record<string, number> =
+    (response?.competency_answers as Record<string, number>) ?? {}
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-      <div className="text-center">
-        <p className="text-slate-500 text-sm mb-2">안녕하세요</p>
-        <h1 className="text-2xl font-bold text-slate-900">{studentName}님의 진로 체크리스트</h1>
-        <p className="text-slate-400 text-sm mt-4">체크리스트 화면 준비 중...</p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <CompetencyChecklist
+        items={items}
+        initialAnswers={initialAnswers}
+        sessionRound={sessionRound}
+        studentName={studentName ?? ''}
+      />
     </div>
   )
 }
