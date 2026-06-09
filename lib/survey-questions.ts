@@ -18,22 +18,30 @@ export const JOB_LABELS_FLAT: Record<JobType, string> = {
   ae: 'AE (대행사)',
 }
 
-// 어렵다(key=0)를 맨 앞에 배치, key=1-4는 긍정 응답
+export const JOB_EMOJIS: Record<JobType, string> = {
+  performance: '⚡', content: '✍️', brand: '🎨',
+  growth: '📈', crm: '👥', ae: '🤝',
+}
+
+export const JOB_SHORT_LABELS: Record<JobType, string> = {
+  performance: '퍼포먼스', content: '콘텐츠', brand: '브랜드',
+  growth: '그로스', crm: 'CRM', ae: 'AE',
+}
+
 export const ANSWER_OPTIONS = [
-  { key: 0, label: '어렵다',   desc: '아직 관심이 가지 않는 것' },
-  { key: 1, label: '관심있다', desc: '배우고 싶거나 흥미로운 것' },
-  { key: 2, label: '잘한다',   desc: '남들보다 잘한다고 느끼는 것' },
-  { key: 3, label: '재미있다', desc: '하면 시간 가는 줄 모르는 것' },
-  { key: 4, label: '경험있다', desc: '실제로 해본 적 있는 것' },
+  { key: 0, label: '어렵다',     desc: '관심이 가지 않거나 부담스러운 것' },
+  { key: 1, label: '잘모르겠다', desc: '경험이 없어서 판단하기 어려운 것' },
+  { key: 2, label: '관심있다',   desc: '배우고 싶거나 흥미로운 것' },
+  { key: 3, label: '좋아한다',   desc: '하면 시간 가는 줄 모르는 것' },
+  { key: 4, label: '경험있다',   desc: '실제로 해본 적 있는 것' },
 ] as const
 
-// 답변 선택지별 점수 가중치: 어렵다=-1, 관심있다=1, 잘한다/재미있다=2, 경험있다=3
 export const ANSWER_WEIGHTS: Record<number, number> = {
-  0: -1,
-  1: 1,
-  2: 2,
-  3: 2,
-  4: 3,
+  0: -1, // 어렵다
+  1: 0,  // 잘모르겠다
+  2: 1,  // 관심있다
+  3: 2,  // 좋아한다
+  4: 3,  // 경험있다
 }
 
 type JobWeight = { job: JobType; weight: 1 | 2 }
@@ -67,7 +75,7 @@ export const QUESTIONS: Question[] = [
   { id: 'c04', text: 'GA4, 네이버 애널리틱스 같은 분석 툴로 방문자 데이터를 들여다보고 싶다', category: 'data',
     jobs: [{ job: 'growth', weight: 2 }, { job: 'crm', weight: 1 }] },
   { id: 'c05', text: '복잡한 내용을 표나 그래프로 깔끔하게 정리하는 편이다', category: 'data',
-    jobs: [{ job: 'crm', weight: 1 }, { job: 'ae', weight: 1 }] },
+    jobs: [{ job: 'crm', weight: 1 }] },
 
   // ✍️ 글쓰기 & 콘텐츠
   { id: 'c06', text: '사람의 감정을 건드리는 문장이나 카피를 쓰는 걸 잘한다', category: 'writing',
@@ -79,7 +87,7 @@ export const QUESTIONS: Question[] = [
   { id: 'c09', text: '숏폼 영상(릴스, 쇼츠 등)을 직접 기획하거나 편집해본 적이 있다', category: 'writing',
     jobs: [{ job: 'content', weight: 2 }] },
   { id: 'c10', text: '어떤 브랜드나 제품의 좋은 점을 글로 설득력 있게 풀어쓰는 게 재미있다', category: 'writing',
-    jobs: [{ job: 'content', weight: 1 }, { job: 'brand', weight: 1 }, { job: 'ae', weight: 2 }] },
+    jobs: [{ job: 'content', weight: 2 }, { job: 'brand', weight: 1 }] },
 
   // 📢 광고 & 채널
   { id: 'c11', text: '메타(인스타·페북), 구글, 카카오 등 광고 매체를 직접 운영해보고 싶다', category: 'ads',
@@ -89,13 +97,13 @@ export const QUESTIONS: Question[] = [
   { id: 'c13', text: '광고 소재(이미지, 영상, 카피)가 왜 어떤 건 잘 되고 어떤 건 안 되는지 궁금하다', category: 'ads',
     jobs: [{ job: 'performance', weight: 1 }, { job: 'content', weight: 1 }, { job: 'ae', weight: 2 }] },
   { id: 'c14', text: 'SNS 계정(인스타, 블로그, 유튜브 등)을 꾸준히 운영해본 적이 있다', category: 'ads',
-    jobs: [{ job: 'content', weight: 1 }, { job: 'ae', weight: 1 }] },
+    jobs: [{ job: 'content', weight: 1 }] },
 
   // 🎯 전략 & 브랜드
   { id: 'c15', text: '브랜드가 어떤 이미지를 갖고 있는지, 왜 사람들이 그 브랜드를 좋아하는지 분석하는 게 재미있다', category: 'strategy',
-    jobs: [{ job: 'brand', weight: 2 }, { job: 'ae', weight: 1 }] },
+    jobs: [{ job: 'brand', weight: 2 }] },
   { id: 'c16', text: '어떤 제품이나 서비스가 \'누구에게\' \'어떤 메시지\'로 광고해야 할지 떠올리는 걸 잘한다', category: 'strategy',
-    jobs: [{ job: 'brand', weight: 2 }, { job: 'ae', weight: 1 }, { job: 'performance', weight: 1 }] },
+    jobs: [{ job: 'brand', weight: 2 }, { job: 'performance', weight: 1 }] },
   { id: 'c17', text: '하나의 캠페인을 처음부터 끝까지(기획→실행→성과 측정→회고) 진행해보고 싶다', category: 'strategy',
     jobs: [{ job: 'ae', weight: 2 }, { job: 'growth', weight: 1 }] },
   { id: 'c18', text: '여러 가지 아이디어 중 \'이게 더 맞다\'는 감각으로 방향을 잡는 편이다', category: 'strategy',
@@ -115,7 +123,7 @@ export const QUESTIONS: Question[] = [
   { id: 'c23', text: '고객을 특성별로 나눠서(세그먼트) 다르게 접근하는 전략을 배워보고 싶다', category: 'people',
     jobs: [{ job: 'crm', weight: 2 }, { job: 'growth', weight: 1 }] },
   { id: 'c24', text: '상대방이 무엇을 필요로 하는지 파악하고 그에 맞게 대화하는 편이다', category: 'people',
-    jobs: [{ job: 'crm', weight: 2 }, { job: 'ae', weight: 1 }] },
+    jobs: [{ job: 'crm', weight: 2 }] },
 
   // 🤝 협업 & 프로젝트
   { id: 'c25', text: '여러 일을 동시에 관리하면서 마감을 맞추는 것을 잘한다', category: 'collab',
@@ -125,7 +133,7 @@ export const QUESTIONS: Question[] = [
   { id: 'c27', text: '기획한 내용을 발표하거나 글로 설득력 있게 전달하는 것을 잘한다', category: 'collab',
     jobs: [{ job: 'ae', weight: 1 }, { job: 'brand', weight: 1 }] },
   { id: 'c28', text: '팀원들과 아이디어를 나누고 함께 결과물을 만들어 가는 과정이 즐겁다', category: 'collab',
-    jobs: [{ job: 'ae', weight: 1 }, { job: 'content', weight: 1 }, { job: 'growth', weight: 1 }] },
+    jobs: [{ job: 'content', weight: 1 }, { job: 'growth', weight: 1 }] },
 
   // 🛠️ 툴 & 실무 감각
   { id: 'c29', text: 'AI 툴(ChatGPT, 미드저니 등)을 마케팅이나 콘텐츠 제작에 활용해본 적이 있다', category: 'tools',
@@ -138,8 +146,7 @@ export function calcMaxScores(): Record<JobType, number> {
   const maxScores = { performance: 0, content: 0, brand: 0, growth: 0, crm: 0, ae: 0 }
   for (const q of QUESTIONS) {
     for (const { job, weight } of q.jobs) {
-      // 최대 답변 가중치 = 3 (경험있다)
-      maxScores[job] += weight * 3
+      maxScores[job] += weight * 3 // 최대 답변 가중치 = 3 (경험있다)
     }
   }
   return maxScores

@@ -17,6 +17,7 @@ type Props = {
   topJobPct: number
   sessionRound: number
   initialDay1: Day1Data
+  preSelectedJob: JobType | null
   onClose: () => void
 }
 
@@ -29,6 +30,7 @@ export default function PostSaveFlow(props: Props) {
       <ChoiceScreen
         topJob={props.topJob}
         topJobPct={props.topJobPct}
+        preSelectedJob={props.preSelectedJob}
         onDirectSlack={() => setStep('slack')}
         onDay1={() => setStep('day1')}
         onClose={props.onClose}
@@ -61,14 +63,16 @@ export default function PostSaveFlow(props: Props) {
 
 // ── 선택지 화면 ──────────────────────────────────────────────────
 
-function ChoiceScreen({ topJob, topJobPct, onDirectSlack, onDay1, onClose }: {
+function ChoiceScreen({ topJob, topJobPct, preSelectedJob, onDirectSlack, onDay1, onClose }: {
   topJob: JobType | null
   topJobPct: number
+  preSelectedJob: JobType | null
   onDirectSlack: () => void
   onDay1: () => void
   onClose: () => void
 }) {
   const color = topJob ? JOB_COLORS[topJob] : '#64748b'
+  const isSame = preSelectedJob && topJob && preSelectedJob === topJob
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
@@ -78,7 +82,7 @@ function ChoiceScreen({ topJob, topJobPct, onDirectSlack, onDay1, onClose }: {
           ✕
         </button>
 
-        <div className="text-center mb-6">
+        <div className="text-center mb-4">
           <div className="text-4xl mb-3">🎉</div>
           <h2 className="text-xl font-bold text-slate-900 mb-1">체크리스트 저장 완료!</h2>
           {topJob && (
@@ -89,6 +93,27 @@ function ChoiceScreen({ topJob, topJobPct, onDirectSlack, onDay1, onClose }: {
             </div>
           )}
         </div>
+
+        {/* 사전 선택 vs 결과 비교 */}
+        {preSelectedJob && topJob && (
+          <div className="bg-slate-50 rounded-2xl p-3 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="flex-1 text-center">
+                <p className="text-[10px] text-slate-400 mb-0.5">처음 생각한 직무</p>
+                <p className="text-sm font-semibold text-slate-600">{JOB_LABELS_FLAT[preSelectedJob]}</p>
+              </div>
+              <div className="text-slate-300 text-base shrink-0">→</div>
+              <div className="flex-1 text-center">
+                <p className="text-[10px] text-slate-400 mb-0.5">체크리스트 결과</p>
+                <p className="text-sm font-bold" style={{ color }}>{JOB_LABELS_FLAT[topJob]}</p>
+              </div>
+            </div>
+            <p className="text-center text-[11px] mt-2 font-medium"
+              style={{ color: isSame ? '#10b981' : '#6366f1' }}>
+              {isSame ? '예상과 결과가 일치했어요! ✓' : '새로운 발견이 있었나요? 🔍'}
+            </p>
+          </div>
+        )}
 
         <p className="text-sm text-slate-500 text-center mb-4">다음 단계를 선택해주세요</p>
 

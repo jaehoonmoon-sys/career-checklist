@@ -7,6 +7,7 @@ import {
 } from 'recharts'
 import {
   QUESTIONS, CATEGORIES, ANSWER_OPTIONS, ANSWER_WEIGHTS, JOB_LABELS, JOB_LABELS_FLAT,
+  JOB_EMOJIS, JOB_SHORT_LABELS,
   calcJobScores, calcMaxScores, type JobType,
 } from '@/lib/survey-questions'
 import { saveCompetencyAnswers } from '@/app/actions/checklist'
@@ -26,16 +27,14 @@ const JOB_COLORS: Record<JobType, string> = {
   ae: '#6366f1',
 }
 
-// 선택지별 색상
 const OPTION_COLORS: Record<number, string> = {
-  0: '#94a3b8',  // 어렵다
-  1: '#3b82f6',  // 관심있다
-  2: '#10b981',  // 잘한다
-  3: '#8b5cf6',  // 재미있다
-  4: '#f97316',  // 경험있다
+  0: '#f87171', // 어렵다 (red)
+  1: '#94a3b8', // 잘모르겠다 (neutral grey)
+  2: '#3b82f6', // 관심있다 (blue)
+  3: '#8b5cf6', // 좋아한다 (purple)
+  4: '#f97316', // 경험있다 (orange)
 }
 
-// 카테고리별 JD 키워드 (학습 힌트용)
 const CAT_KEYWORDS: Record<string, string> = {
   data:     'CTR, ROAS, CPA, GA4, A/B테스트',
   writing:  '카피라이팅, 콘텐츠 기획, 숏폼, SNS',
@@ -46,9 +45,6 @@ const CAT_KEYWORDS: Record<string, string> = {
   collab:   '프로젝트 관리, 발표, 협업',
   tools:    'AI 툴, 디자인 툴, 분석 도구',
 }
-
-const toDisplayValue = (raw: number) =>
-  raw === 0 ? 0 : Math.round(Math.pow(raw / 100, 0.55) * 100)
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CustomTick = ({ x, y, payload }: any) => {
@@ -74,22 +70,34 @@ type Props = {
 
 export default function CompetencyChecklist({ initialAnswers, initialDay1, sessionRound, studentName }: Props) {
   const [answers, setAnswers] = useState<Record<string, number>>(initialAnswers)
-  const [saved, setSaved] = useState(Object.keys(initialAnswers).length > 0)
+  const [saved, setSaved] = useState(
+    Object.keys(initialAnswers).filter(k => !k.startsWith('_')).length > 0
+  )
   const [isPending, startTransition] = useTransition()
   const [saveMsg, setSaveMsg] = useState('')
   const [resetConfirm, setResetConfirm] = useState(false)
   const [showFlow, setShowFlow] = useState(false)
 
-  const answeredCount = Object.keys(answers).length
-  const positiveCount = Object.entries(answers).filter(([, v]) => ANSWER_WEIGHTS[v] > 0).length
+  // 사전 직무 선택 (체크리스트 전 직감 선택)
+  const [preSelectedJob, setPreSelectedJob] = useState<JobType | null>(() => {
+    const idx = initialAnswers['_pre']
+    return typeof idx === 'number' && idx >= 0 && idx < JOB_ORDER.length
+      ? JOB_ORDER[idx]
+      : null
+  })
+
+  // _pre 키 제외한 실제 답변 수
+  const answeredCount = useMemo(() =>
+    Object.keys(answers).filter(k => !k.startsWith('_')).length,
+  [answers])
+
+  const positiveCount = useMemo(() =>
+    Object.entries(answers).filter(([k, v]) => !k.startsWith('_') && ANSWER_WEIGHTS[v] > 0).length,
+  [answers])
 
   const jobScores = useMemo(() => calcJobScores(answers), [answers])
 
-  const radarData = JOB_ORDER.map((job) => {
-    const raw = Math.max(0, (jobScores[job] / MAX_SCORES[job]) * 100)
-    return { subject: JOB_LABELS[job], value: toDisplayValue(raw), fullMark: 100 }
-  })
-
+  // 모든 표시는 jobPercents 기준 (레이더·바·선택직무 일치)
   const jobPercents = useMemo(() =>
     JOB_ORDER.reduce((acc, job) => ({
       ...acc,
@@ -97,7 +105,18 @@ export default function CompetencyChecklist({ initialAnswers, initialDay1, sessi
     }), {} as Record<JobType, number>),
   [jobScores])
 
-  const topJob = JOB_ORDER.reduce((a, b) => jobScores[a] >= jobScores[b] ? a : b)
+  const radarData = useMemo(() =>
+    JOB_ORDER.map((job) => ({
+      subject: JOB_LABELS[job],
+      value: jobPercents[job],
+      fullMark: 100,
+    })),
+  [jobPercents])
+
+  const topJob = useMemo(() =>
+    JOB_ORDER.reduce((a, b) => jobPercents[a] >= jobPercents[b] ? a : b),
+  [jobPercents])
+
   const chartColor = positiveCount > 0 ? JOB_COLORS[topJob] : '#94a3b8'
 
   const selectOption = (qId: string, optKey: number) => {
@@ -116,7 +135,15 @@ export default function CompetencyChecklist({ initialAnswers, initialDay1, sessi
   const handleSave = () => {
     setResetConfirm(false)
     startTransition(async () => {
-      const result = await saveCompetencyAnswers(sessionRound, answers)
+      // 일반 답변만 추출 후 _pre 추가
+      const answersToSave: Record<string, number> = {}
+      for (const [k, v] of Object.entries(answers)) {
+        if (!k.startsWith('_')) answersToSave[k] = v
+      }
+      if (preSelectedJob !== null) {
+        answersToSave['_pre'] = JOB_ORDER.indexOf(preSelectedJob)
+      }
+      const result = await saveCompetencyAnswers(sessionRound, answersToSave)
       if (result?.error) { setSaveMsg(result.error) }
       else { setSaved(true); setSaveMsg('저장됐어요!'); setTimeout(() => setSaveMsg(''), 2000); setShowFlow(true) }
     })
@@ -129,73 +156,69 @@ export default function CompetencyChecklist({ initialAnswers, initialDay1, sessi
     setResetConfirm(false)
   }
 
-  // 오른쪽 패널 (레이더 + 직무 바) — 데스크톱·모바일 공용
   const rightPanel = (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {/* 레이더 차트 */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-        <p className="text-xs font-semibold text-slate-600 mb-1">📊 직무 적합도 레이더</p>
-        <ResponsiveContainer width="100%" height={230}>
-          <RadarChart data={radarData} margin={{ top: 14, right: 32, bottom: 14, left: 32 }}>
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-3">
+        <p className="text-xs font-semibold text-slate-600 mb-0.5">📊 직무 적합도 레이더</p>
+        <ResponsiveContainer width="100%" height={190}>
+          <RadarChart data={radarData} margin={{ top: 14, right: 30, bottom: 14, left: 30 }}>
             <PolarGrid gridType="polygon" stroke="#e2e8f0" />
             <PolarAngleAxis dataKey="subject" tick={(props) => <CustomTick {...props} />} />
             <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
             <Radar dataKey="value" stroke={chartColor} fill={chartColor}
               fillOpacity={0.35} dot={{ r: 3, fill: chartColor }}
-              animationDuration={250} animationBegin={0} />
+              animationDuration={600} animationBegin={0} />
           </RadarChart>
         </ResponsiveContainer>
       </div>
 
-      {/* 카운터 + 가장 잘 맞는 직무 */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-        <p className="text-xs text-slate-400 mb-2">
+      {/* 선택된 직무 + 직무별 바 통합 */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-3">
+        <p className="text-xs text-slate-400 mb-1.5">
           <span className="text-slate-700 font-semibold text-sm">{answeredCount}</span>
-          {' '}/ {TOTAL_QUESTIONS}개 항목 선택됨
+          {' '}/ {TOTAL_QUESTIONS}개 선택됨
         </p>
-        <div className="rounded-xl p-4 text-center transition-all duration-300"
-          style={{ backgroundColor: `${chartColor}14` }}>
-          <p className="text-[11px] text-slate-400 mb-1">🔥 가장 잘 맞는 직무</p>
-          {positiveCount > 0 ? (
-            <>
-              <p className="text-lg font-bold leading-tight" style={{ color: chartColor }}>
-                {JOB_LABELS_FLAT[topJob]}
-              </p>
-              <p className="text-xs mt-0.5 font-medium" style={{ color: chartColor }}>
-                적합도 {jobPercents[topJob]}%
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-base font-bold text-slate-300">항목을 선택해주세요</p>
-              <p className="text-[11px] text-slate-300 mt-0.5">체크할수록 결과가 정확해집니다</p>
-            </>
-          )}
+
+        {positiveCount > 0 ? (
+          <div className="rounded-xl p-3 text-center mb-3 transition-all duration-300"
+            style={{ backgroundColor: `${chartColor}14` }}>
+            <p className="text-[10px] text-slate-400 mb-0.5">🔥 가장 잘 맞는 직무</p>
+            <p className="text-base font-bold leading-tight" style={{ color: chartColor }}>
+              {JOB_LABELS_FLAT[topJob]}
+            </p>
+            <p className="text-xs mt-0.5 font-medium" style={{ color: chartColor }}>
+              적합도 {jobPercents[topJob]}%
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-xl p-3 text-center mb-3 bg-slate-50">
+            <p className="text-sm font-bold text-slate-300">항목을 선택해주세요</p>
+            <p className="text-[11px] text-slate-300 mt-0.5">체크할수록 결과가 정확해집니다</p>
+          </div>
+        )}
+
+        {/* 직무별 바 */}
+        <div className="space-y-2">
+          {JOB_ORDER.map(job => {
+            const pct = jobPercents[job]
+            return (
+              <div key={job}>
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-xs font-medium" style={{ color: JOB_COLORS[job] }}>
+                    {JOB_SHORT_LABELS[job]}
+                  </span>
+                  <span className="text-[11px] text-slate-400">{pct}%</span>
+                </div>
+                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${pct}%`, backgroundColor: JOB_COLORS[job] }} />
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
-
-      {/* 직무별 적합도 바 */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-        <p className="text-xs font-semibold text-slate-600 mb-3">직무별 적합도</p>
-        {JOB_ORDER.map(job => {
-          const pct = jobPercents[job]
-          return (
-            <div key={job} className="mb-2.5 last:mb-0">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-semibold" style={{ color: JOB_COLORS[job] }}>
-                  {JOB_LABELS_FLAT[job]}
-                </span>
-                <span className="text-xs text-slate-400">{pct}%</span>
-              </div>
-              <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${pct}%`, backgroundColor: JOB_COLORS[job] }} />
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
     </div>
   )
 
@@ -217,24 +240,23 @@ export default function CompetencyChecklist({ initialAnswers, initialDay1, sessi
       </nav>
 
       {/* 타이틀 섹션 */}
-      <section className="bg-white border-b border-slate-100 py-7 px-4 text-center">
+      <section className="bg-white border-b border-slate-100 py-6 px-4 text-center">
         <span className="inline-block bg-slate-100 text-slate-500 text-[11px] font-medium px-3 py-1 rounded-full mb-3">
           디지털 마케터 부트캠프
         </span>
         <h1 className="text-2xl font-bold text-slate-900 mb-1.5">나는 어떤 마케터일까? 🎯</h1>
         <p className="text-sm text-slate-500 mb-0.5">경험이 없어도 괜찮습니다. 관심·성향·재미를 기준으로 솔직하게 체크해주세요.</p>
-        <p className="text-sm text-slate-500 mb-5">체크할수록 나의 직무 적합도가 레이더 차트로 나타납니다.</p>
-        {/* 선택지 범례 — 긍정 옵션만 */}
+        <p className="text-sm text-slate-500 mb-4">체크할수록 나의 직무 적합도가 레이더 차트로 나타납니다.</p>
         <div className="flex flex-wrap gap-2 justify-center">
-          {ANSWER_OPTIONS.filter(o => o.key > 0).map(opt => (
+          {ANSWER_OPTIONS.map(opt => (
             <div key={opt.key}
-              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 border"
+              className="flex items-center gap-1.5 rounded-full px-3 py-1 border"
               style={{
                 borderColor: `${OPTION_COLORS[opt.key]}50`,
                 backgroundColor: `${OPTION_COLORS[opt.key]}0d`,
               }}>
-              <span className="text-xs font-bold" style={{ color: OPTION_COLORS[opt.key] }}>{opt.label}</span>
-              <span className="text-xs text-slate-500">{opt.desc}</span>
+              <span className="text-[11px] font-bold" style={{ color: OPTION_COLORS[opt.key] }}>{opt.label}</span>
+              <span className="text-[11px] text-slate-500">{opt.desc}</span>
             </div>
           ))}
         </div>
@@ -248,6 +270,49 @@ export default function CompetencyChecklist({ initialAnswers, initialDay1, sessi
 
         {/* 왼쪽: 질문 목록 */}
         <div className="flex-1 min-w-0 space-y-4">
+
+          {/* 첫 번째 카드: 직감으로 직무 미리 선택 */}
+          <div className="bg-white rounded-2xl shadow-sm border border-indigo-100 overflow-hidden">
+            <div className="px-5 py-2.5 bg-indigo-50 border-b border-indigo-100 flex items-center gap-2">
+              <span className="text-base">💡</span>
+              <span className="text-sm font-semibold text-slate-800">먼저, 직감으로 선택해보세요</span>
+              <span className="text-[11px] text-indigo-400 ml-auto">필수 아님</span>
+            </div>
+            <div className="px-5 py-4">
+              <p className="text-[13px] text-slate-500 mb-3">
+                체크리스트를 시작하기 전에, 지금 직감으로 <strong className="text-slate-700">내가 가장 잘 맞는다고 생각하는 직무</strong>를
+                하나 골라보세요. 결과와 비교해볼 거예요.
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {JOB_ORDER.map(job => {
+                  const isSelected = preSelectedJob === job
+                  return (
+                    <button key={job}
+                      onClick={() => setPreSelectedJob(isSelected ? null : job)}
+                      className={`py-2 px-2 rounded-xl text-[12px] font-semibold border-2 transition-all ${
+                        isSelected
+                          ? 'text-white border-transparent shadow-sm'
+                          : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                      }`}
+                      style={isSelected ? { backgroundColor: JOB_COLORS[job], borderColor: JOB_COLORS[job] } : {}}>
+                      {JOB_EMOJIS[job]} {JOB_SHORT_LABELS[job]}
+                    </button>
+                  )
+                })}
+              </div>
+              {preSelectedJob && (
+                <p className="text-[11px] text-slate-400 mt-2.5">
+                  선택됨:{' '}
+                  <span className="font-semibold" style={{ color: JOB_COLORS[preSelectedJob] }}>
+                    {JOB_LABELS_FLAT[preSelectedJob]}
+                  </span>
+                  {' — 체크리스트 결과와 비교해볼게요!'}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* 카테고리별 질문 */}
           {CATEGORIES.map(cat => {
             const catQs = QUESTIONS.filter(q => q.category === cat.key)
             if (!catQs.length) return null
@@ -255,7 +320,6 @@ export default function CompetencyChecklist({ initialAnswers, initialDay1, sessi
 
             return (
               <div key={cat.key} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                {/* 카테고리 헤더 */}
                 <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center gap-2">
                   <span className="text-base">{cat.emoji}</span>
                   <span className="text-sm font-semibold text-slate-800">{cat.label}</span>
@@ -265,7 +329,6 @@ export default function CompetencyChecklist({ initialAnswers, initialDay1, sessi
                   <span className="ml-auto text-xs text-slate-400 font-medium">{catDone}/{catQs.length}</span>
                 </div>
 
-                {/* 질문 목록 */}
                 <div className="divide-y divide-slate-50">
                   {catQs.map(q => {
                     const sel = answers[q.id]
@@ -275,7 +338,6 @@ export default function CompetencyChecklist({ initialAnswers, initialDay1, sessi
                     return (
                       <div key={q.id} className="px-5 py-3">
                         <div className="flex items-start gap-3">
-                          {/* 체크박스 */}
                           <div className={`w-[18px] h-[18px] rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
                             !isAnswered ? 'border-slate-200 bg-white' : ''
                           }`} style={isAnswered ? {
@@ -291,19 +353,16 @@ export default function CompetencyChecklist({ initialAnswers, initialDay1, sessi
                           </div>
 
                           <div className="flex-1 min-w-0">
-                            {/* 선택된 옵션 뱃지 */}
                             {isAnswered && (
                               <span className="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full text-white mb-0.5"
                                 style={{ backgroundColor: optColor! }}>
                                 {ANSWER_OPTIONS.find(o => o.key === sel)?.label}
                               </span>
                             )}
-                            {/* 질문 텍스트 */}
                             <p className="text-[14px] font-semibold text-slate-800 leading-snug">{q.text}</p>
                           </div>
                         </div>
 
-                        {/* 선택 버튼 */}
                         <div className="flex gap-1 mt-2 ml-[30px]">
                           {ANSWER_OPTIONS.map(opt => {
                             const isSelected = sel === opt.key
@@ -312,9 +371,7 @@ export default function CompetencyChecklist({ initialAnswers, initialDay1, sessi
                                 className={`flex-1 py-1.5 text-[11px] font-medium rounded-lg border transition-all ${
                                   isSelected
                                     ? 'text-white border-transparent shadow-sm'
-                                    : opt.key === 0
-                                      ? 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
-                                      : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
                                 }`}
                                 style={isSelected ? {
                                   backgroundColor: OPTION_COLORS[opt.key],
@@ -335,8 +392,8 @@ export default function CompetencyChecklist({ initialAnswers, initialDay1, sessi
         </div>
 
         {/* 오른쪽 패널 — 데스크톱 sticky */}
-        <div className="hidden lg:block w-[320px] shrink-0 sticky top-14"
-          style={{ maxHeight: 'calc(100vh - 4rem)', overflowY: 'auto' }}>
+        <div className="hidden lg:block w-[300px] shrink-0 sticky top-[3.25rem]"
+          style={{ maxHeight: 'calc(100vh - 3.25rem)', overflowY: 'auto' }}>
           {rightPanel}
         </div>
       </div>
@@ -344,7 +401,6 @@ export default function CompetencyChecklist({ initialAnswers, initialDay1, sessi
       {/* 하단 저장 버튼 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur border-t border-slate-100 p-3 z-10">
         <div className="max-w-6xl mx-auto flex items-center gap-2">
-          {/* 초기화 버튼 */}
           {answeredCount > 0 && (
             resetConfirm ? (
               <>
@@ -377,7 +433,6 @@ export default function CompetencyChecklist({ initialAnswers, initialDay1, sessi
         </div>
       </div>
 
-      {/* 저장 후 다음 단계 플로우 */}
       {showFlow && (
         <PostSaveFlow
           studentName={studentName}
@@ -385,6 +440,7 @@ export default function CompetencyChecklist({ initialAnswers, initialDay1, sessi
           topJobPct={jobPercents[topJob]}
           sessionRound={sessionRound}
           initialDay1={initialDay1}
+          preSelectedJob={preSelectedJob}
           onClose={() => setShowFlow(false)}
         />
       )}
