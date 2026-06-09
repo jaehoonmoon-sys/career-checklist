@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis,
   PolarRadiusAxis, ResponsiveContainer,
@@ -46,8 +46,10 @@ type Props = {
 }
 
 export default function StudentDetailModal({ student, onClose }: Props) {
-  const { answers, top_job, job_pcts, student_name, answered_count, cohort } = student
+  const { answers, top_job, job_pcts, student_name, answered_count, cohort, experiences } = student
   const chartColor = top_job ? JOB_COLORS[top_job] : '#94a3b8'
+  const [tab, setTab] = useState<'checklist' | 'experience'>('checklist')
+  const hasExperiences = !!experiences
 
   const radarData = JOB_ORDER.map(job => ({
     subject: JOB_LABELS[job],
@@ -147,8 +149,43 @@ export default function StudentDetailModal({ student, onClose }: Props) {
           </button>
         </div>
 
+        {/* 탭 */}
+        <div className="bg-white border-b border-slate-100 px-5 flex gap-1 shrink-0">
+          <button onClick={() => setTab('checklist')}
+            className={`py-2.5 px-2 text-xs font-medium border-b-2 transition-colors ${
+              tab === 'checklist' ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}>
+            📋 체크리스트
+          </button>
+          <button onClick={() => setTab('experience')}
+            className={`py-2.5 px-2 text-xs font-medium border-b-2 transition-colors flex items-center gap-1 ${
+              tab === 'experience' ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}>
+            📝 경험 정리
+            {hasExperiences && (
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+            )}
+          </button>
+        </div>
+
         {/* 컨텐츠 */}
         <div className="flex-1 overflow-y-auto">
+          {/* 경험 정리 탭 */}
+          {tab === 'experience' && (
+            <div className="px-5 py-5 max-w-2xl">
+              {hasExperiences ? (
+                <ExperienceReadOnly exp={experiences!} />
+              ) : (
+                <div className="text-center py-12 text-slate-400">
+                  <p className="text-3xl mb-2">📝</p>
+                  <p className="text-sm">아직 경험 정리를 작성하지 않았어요</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 체크리스트 탭 */}
+          {tab === 'checklist' && <>
           {/* 모바일: 차트 상단 */}
           <div className="lg:hidden px-4 pt-4">{rightPanel}</div>
 
@@ -223,12 +260,60 @@ export default function StudentDetailModal({ student, onClose }: Props) {
 
             {/* 데스크톱 sticky 오른쪽 */}
             <div className="hidden lg:block w-[280px] shrink-0 sticky top-0"
-              style={{ maxHeight: 'calc(100vh - 65px)', overflowY: 'auto' }}>
+              style={{ maxHeight: 'calc(100vh - 105px)', overflowY: 'auto' }}>
               {rightPanel}
             </div>
           </div>
+          </>}
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── 경험 정리 읽기 전용 뷰 ────────────────────────────────────────
+
+const EXP_FIELDS: { key: string; label: string; emoji: string }[] = [
+  { key: 'work',        label: '일 / 알바 / 직장 경험',       emoji: '💼' },
+  { key: 'school',      label: '학교 / 학습 경험',             emoji: '🎓' },
+  { key: 'personal',    label: '개인 활동',                    emoji: '🌱' },
+  { key: 'energy_flow', label: '몰입했던 순간',                emoji: '⚡' },
+  { key: 'good_at',     label: '잘한다고 느꼈던 순간',         emoji: '✨' },
+  { key: 'dislike',     label: '하기 싫었던 것 + 이유',        emoji: '😣' },
+  { key: 'strengths',   label: '나의 강점 3가지',              emoji: '💪' },
+  { key: 'target_job_1','label': '1순위 목표 직무 & 이유',     emoji: '🥇' },
+  { key: 'target_job_2','label': '2순위 목표 직무 & 이유',     emoji: '🥈' },
+  { key: 'industries',  label: '관심 산업 & 일하고 싶은 환경', emoji: '🏢' },
+  { key: 'target_jd_url','label': '목표 JD 링크',             emoji: '📄' },
+  { key: 'target_jd_note','label': 'JD 관련 메모',            emoji: '📝' },
+]
+
+function ExperienceReadOnly({ exp }: { exp: Partial<Record<string, string>> }) {
+  const filled = EXP_FIELDS.filter(f => exp[f.key]?.trim())
+  if (!filled.length) {
+    return (
+      <div className="text-center py-12 text-slate-400">
+        <p className="text-sm">작성된 내용이 없어요</p>
+      </div>
+    )
+  }
+  return (
+    <div className="space-y-5">
+      {filled.map(f => (
+        <div key={f.key}>
+          <p className="text-xs font-semibold text-slate-600 mb-1.5">{f.emoji} {f.label}</p>
+          {f.key === 'target_jd_url' ? (
+            <a href={exp[f.key]} target="_blank" rel="noopener noreferrer"
+              className="text-sm text-blue-600 underline break-all">
+              {exp[f.key]}
+            </a>
+          ) : (
+            <div className="bg-slate-50 rounded-xl px-4 py-3 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+              {exp[f.key]}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   )
 }

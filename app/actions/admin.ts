@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase'
 import { calcJobScores, calcMaxScores, type JobType } from '@/lib/survey-questions'
+import { type ExperienceData } from '@/lib/types'
 
 const MAX_SCORES = calcMaxScores()
 const JOB_KEYS: JobType[] = ['performance', 'content', 'brand', 'growth', 'crm', 'ae']
@@ -16,6 +17,7 @@ export type StudentRow = {
   answers: Record<string, number>
   answered_count: number
   updated_at: string | null
+  experiences: Partial<ExperienceData> | null
 }
 
 const EMPTY_PCTS: Record<JobType, number> = {
@@ -33,7 +35,7 @@ export async function getAdminOverview(): Promise<StudentRow[]> {
       .order('student_name'),
     adminClient
       .from('cc_checklist_responses')
-      .select('student_id, competency_answers, updated_at')
+      .select('student_id, competency_answers, common_experiences, updated_at')
       .eq('session_round', 1),
   ])
 
@@ -46,6 +48,9 @@ export async function getAdminOverview(): Promise<StudentRow[]> {
     const answers = (resp?.competency_answers as Record<string, number>) ?? {}
     const answered_count = Object.keys(answers).length
 
+    const experiences = (resp?.common_experiences as Partial<ExperienceData>) ?? null
+    const hasExperiences = experiences && Object.values(experiences).some(v => v && String(v).trim())
+
     if (answered_count === 0) {
       return {
         id: s.id,
@@ -57,6 +62,7 @@ export async function getAdminOverview(): Promise<StudentRow[]> {
         answers: {},
         answered_count: 0,
         updated_at: resp?.updated_at ?? null,
+        experiences: hasExperiences ? experiences : null,
       }
     }
 
@@ -77,6 +83,7 @@ export async function getAdminOverview(): Promise<StudentRow[]> {
       answers,
       answered_count,
       updated_at: resp?.updated_at ?? null,
+      experiences: hasExperiences ? experiences : null,
     }
   })
 }

@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getStudentResponse } from '@/app/actions/checklist'
 import CompetencyChecklist from '@/components/student/CompetencyChecklist'
+import { type ExperienceData, EMPTY_EXPERIENCE } from '@/lib/types'
 
 export default async function StudentPage() {
   const cookieStore = await cookies()
@@ -16,10 +17,13 @@ export default async function StudentPage() {
   const response = await getStudentResponse(sessionRound)
   const initialAnswers: Record<string, number> =
     (response?.competency_answers as Record<string, number>) ?? {}
+  const initialExperiences: ExperienceData =
+    { ...EMPTY_EXPERIENCE, ...((response?.common_experiences as Partial<ExperienceData>) ?? {}) }
 
   return (
     <CompetencyChecklist
       initialAnswers={initialAnswers}
+      initialExperiences={initialExperiences}
       sessionRound={sessionRound}
       studentName={studentName ?? ''}
     />

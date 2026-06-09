@@ -10,6 +10,8 @@ import {
   calcJobScores, calcMaxScores, type JobType,
 } from '@/lib/survey-questions'
 import { saveCompetencyAnswers } from '@/app/actions/checklist'
+import PostSaveFlow from './PostSaveFlow'
+import { type ExperienceData } from '@/lib/types'
 
 const MAX_SCORES = calcMaxScores()
 const JOB_ORDER: JobType[] = ['performance', 'content', 'brand', 'growth', 'crm', 'ae']
@@ -65,16 +67,18 @@ const CustomTick = ({ x, y, payload }: any) => {
 
 type Props = {
   initialAnswers: Record<string, number>
+  initialExperiences: ExperienceData
   sessionRound: number
   studentName: string
 }
 
-export default function CompetencyChecklist({ initialAnswers, sessionRound, studentName }: Props) {
+export default function CompetencyChecklist({ initialAnswers, initialExperiences, sessionRound, studentName }: Props) {
   const [answers, setAnswers] = useState<Record<string, number>>(initialAnswers)
   const [saved, setSaved] = useState(Object.keys(initialAnswers).length > 0)
   const [isPending, startTransition] = useTransition()
   const [saveMsg, setSaveMsg] = useState('')
   const [resetConfirm, setResetConfirm] = useState(false)
+  const [showFlow, setShowFlow] = useState(false)
 
   const answeredCount = Object.keys(answers).length
   const positiveCount = Object.entries(answers).filter(([, v]) => ANSWER_WEIGHTS[v] > 0).length
@@ -114,7 +118,7 @@ export default function CompetencyChecklist({ initialAnswers, sessionRound, stud
     startTransition(async () => {
       const result = await saveCompetencyAnswers(sessionRound, answers)
       if (result?.error) { setSaveMsg(result.error) }
-      else { setSaved(true); setSaveMsg('저장됐어요!'); setTimeout(() => setSaveMsg(''), 2000) }
+      else { setSaved(true); setSaveMsg('저장됐어요!'); setTimeout(() => setSaveMsg(''), 2000); setShowFlow(true) }
     })
   }
 
@@ -371,6 +375,18 @@ export default function CompetencyChecklist({ initialAnswers, sessionRound, stud
           </button>
         </div>
       </div>
+
+      {/* 저장 후 다음 단계 플로우 */}
+      {showFlow && (
+        <PostSaveFlow
+          studentName={studentName}
+          topJob={topJob}
+          jobPct={jobPercents[topJob]}
+          sessionRound={sessionRound}
+          initialExperiences={initialExperiences}
+          onClose={() => setShowFlow(false)}
+        />
+      )}
     </div>
   )
 }

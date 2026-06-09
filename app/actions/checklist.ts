@@ -56,3 +56,30 @@ export async function saveCompetencyAnswers(
   revalidatePath('/student')
   return { success: true }
 }
+
+export async function saveExperiences(
+  sessionRound: number,
+  experiences: Record<string, string>
+) {
+  const cookieStore = await cookies()
+  const studentId = cookieStore.get('cc_student_id')?.value
+  if (!studentId) return { error: '로그인이 필요합니다.' }
+
+  const adminClient = createAdminClient()
+
+  const { error } = await adminClient
+    .from('cc_checklist_responses')
+    .upsert(
+      {
+        student_id: Number(studentId),
+        session_round: sessionRound,
+        common_experiences: experiences,
+      },
+      { onConflict: 'student_id,session_round' }
+    )
+
+  if (error) return { error: '저장 중 오류가 발생했습니다.' }
+
+  revalidatePath('/student')
+  return { success: true }
+}
