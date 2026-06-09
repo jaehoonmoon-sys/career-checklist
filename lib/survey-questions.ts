@@ -9,13 +9,22 @@ export const JOB_LABELS: Record<JobType, string> = {
   ae: 'AE\n(대행사)',
 }
 
+export const JOB_LABELS_FLAT: Record<JobType, string> = {
+  performance: '퍼포먼스 마케터',
+  content: '콘텐츠 마케터',
+  brand: '브랜드 마케터',
+  growth: '그로스 마케터',
+  crm: 'CRM 마케터',
+  ae: 'AE (대행사)',
+}
+
 // 어렵다(key=0)를 맨 앞에 배치, key=1-4는 긍정 응답
 export const ANSWER_OPTIONS = [
-  { key: 0, label: '어렵다', desc: '관심이 잘 안 가요' },
-  { key: 1, label: '관심있다', desc: '배우고 싶어요' },
-  { key: 2, label: '잘한다', desc: '자신 있어요' },
-  { key: 3, label: '재미있다', desc: '시간 가는 줄 몰라요' },
-  { key: 4, label: '경험있다', desc: '직접 해봤어요' },
+  { key: 0, label: '어렵다',   desc: '아직 관심이 가지 않는 것' },
+  { key: 1, label: '관심있다', desc: '배우고 싶거나 흥미로운 것' },
+  { key: 2, label: '잘한다',   desc: '남들보다 잘한다고 느끼는 것' },
+  { key: 3, label: '재미있다', desc: '하면 시간 가는 줄 모르는 것' },
+  { key: 4, label: '경험있다', desc: '실제로 해본 적 있는 것' },
 ] as const
 
 type JobWeight = { job: JobType; weight: 1 | 2 }

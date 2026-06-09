@@ -6,7 +6,7 @@ import {
   PolarRadiusAxis, ResponsiveContainer,
 } from 'recharts'
 import {
-  QUESTIONS, CATEGORIES, ANSWER_OPTIONS, JOB_LABELS,
+  QUESTIONS, CATEGORIES, ANSWER_OPTIONS, JOB_LABELS, JOB_LABELS_FLAT,
   calcJobScores, calcMaxScores, type JobType,
 } from '@/lib/survey-questions'
 import { saveCompetencyAnswers } from '@/app/actions/checklist'
@@ -24,8 +24,29 @@ const JOB_COLORS: Record<JobType, string> = {
   ae: '#6366f1',
 }
 
-const toDisplayValue = (rawPercent: number) =>
-  rawPercent === 0 ? 0 : Math.round(Math.pow(rawPercent / 100, 0.55) * 100)
+// 선택지별 색상
+const OPTION_COLORS: Record<number, string> = {
+  0: '#94a3b8',  // 어렵다
+  1: '#3b82f6',  // 관심있다
+  2: '#10b981',  // 잘한다
+  3: '#8b5cf6',  // 재미있다
+  4: '#f97316',  // 경험있다
+}
+
+// 카테고리별 JD 키워드 (학습 힌트용)
+const CAT_KEYWORDS: Record<string, string> = {
+  data:     'CTR, ROAS, CPA, GA4, A/B테스트',
+  writing:  '카피라이팅, 콘텐츠 기획, 숏폼, SNS',
+  ads:      '광고 매체 운영, 소재 제작, 채널 관리',
+  strategy: '브랜드 전략, 포지셔닝, 캠페인 기획',
+  growth:   '전환율, 리텐션, 퍼널 분석',
+  people:   '고객 세분화, CRM, 고객 여정',
+  collab:   '프로젝트 관리, 발표, 협업',
+  tools:    'AI 툴, 디자인 툴, 분석 도구',
+}
+
+const toDisplayValue = (raw: number) =>
+  raw === 0 ? 0 : Math.round(Math.pow(raw / 100, 0.55) * 100)
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CustomTick = ({ x, y, payload }: any) => {
@@ -33,8 +54,8 @@ const CustomTick = ({ x, y, payload }: any) => {
   return (
     <g transform={`translate(${x},${y})`}>
       {lines.map((line: string, i: number) => (
-        <text key={i} x={0} y={0} dy={i * 13 - (lines.length - 1) * 6.5}
-          textAnchor="middle" fill="#64748b" fontSize={11}>
+        <text key={i} x={0} y={0} dy={i * 12 - (lines.length - 1) * 6}
+          textAnchor="middle" fill="#94a3b8" fontSize={10}>
           {line}
         </text>
       ))}
@@ -61,9 +82,16 @@ export default function CompetencyChecklist({ initialAnswers, sessionRound, stud
   const jobScores = useMemo(() => calcJobScores(answers), [answers])
 
   const radarData = JOB_ORDER.map((job) => {
-    const rawPercent = (jobScores[job] / MAX_SCORES[job]) * 100
-    return { subject: JOB_LABELS[job], value: toDisplayValue(rawPercent), fullMark: 100 }
+    const raw = (jobScores[job] / MAX_SCORES[job]) * 100
+    return { subject: JOB_LABELS[job], value: toDisplayValue(raw), fullMark: 100 }
   })
+
+  const jobPercents = useMemo(() =>
+    JOB_ORDER.reduce((acc, job) => ({
+      ...acc,
+      [job]: Math.round((jobScores[job] / MAX_SCORES[job]) * 100),
+    }), {} as Record<JobType, number>),
+  [jobScores])
 
   const topJob = JOB_ORDER.reduce((a, b) => jobScores[a] >= jobScores[b] ? a : b)
   const chartColor = positiveCount > 0 ? JOB_COLORS[topJob] : '#94a3b8'
@@ -97,130 +125,216 @@ export default function CompetencyChecklist({ initialAnswers, sessionRound, stud
     setResetConfirm(false)
   }
 
-  const chartCard = (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-      <p className="text-xs text-slate-400 text-center mb-1">직무 지향점</p>
-      <ResponsiveContainer width="100%" height={360}>
-        <RadarChart data={radarData} margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
-          <PolarGrid gridType="polygon" stroke="#e2e8f0" />
-          <PolarAngleAxis dataKey="subject" tick={(props) => <CustomTick {...props} />} />
-          <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-          <Radar dataKey="value" stroke={chartColor} fill={chartColor}
-            fillOpacity={0.4} dot={{ r: 5, fill: chartColor }}
-            animationDuration={250} animationBegin={0} />
-        </RadarChart>
-      </ResponsiveContainer>
-      {positiveCount > 0 ? (
-        <p className="text-center text-sm font-semibold mt-2" style={{ color: chartColor }}>
-          ✨ {JOB_LABELS[topJob].replace('\n', ' ')} 지향
+  // 오른쪽 패널 (레이더 + 직무 바) — 데스크톱·모바일 공용
+  const rightPanel = (
+    <div className="space-y-3">
+      {/* 레이더 차트 */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+        <p className="text-xs font-semibold text-slate-600 mb-1">📊 직무 적합도 레이더</p>
+        <ResponsiveContainer width="100%" height={230}>
+          <RadarChart data={radarData} margin={{ top: 14, right: 32, bottom: 14, left: 32 }}>
+            <PolarGrid gridType="polygon" stroke="#e2e8f0" />
+            <PolarAngleAxis dataKey="subject" tick={(props) => <CustomTick {...props} />} />
+            <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+            <Radar dataKey="value" stroke={chartColor} fill={chartColor}
+              fillOpacity={0.35} dot={{ r: 3, fill: chartColor }}
+              animationDuration={250} animationBegin={0} />
+          </RadarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* 카운터 + 가장 잘 맞는 직무 */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+        <p className="text-xs text-slate-400 mb-2">
+          <span className="text-slate-700 font-semibold text-sm">{answeredCount}</span>
+          {' '}/ {TOTAL_QUESTIONS}개 항목 선택됨
         </p>
+        <div className="rounded-xl p-4 text-center transition-all duration-300"
+          style={{ backgroundColor: `${chartColor}14` }}>
+          <p className="text-[11px] text-slate-400 mb-1">🔥 가장 잘 맞는 직무</p>
+          {positiveCount > 0 ? (
+            <>
+              <p className="text-lg font-bold leading-tight" style={{ color: chartColor }}>
+                {JOB_LABELS_FLAT[topJob]}
+              </p>
+              <p className="text-xs mt-0.5 font-medium" style={{ color: chartColor }}>
+                적합도 {jobPercents[topJob]}%
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-base font-bold text-slate-300">항목을 선택해주세요</p>
+              <p className="text-[11px] text-slate-300 mt-0.5">체크할수록 결과가 정확해집니다</p>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* 직무별 적합도 바 */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+        <p className="text-xs font-semibold text-slate-600 mb-3">직무별 적합도</p>
+        {JOB_ORDER.map(job => {
+          const pct = jobPercents[job]
+          return (
+            <div key={job} className="mb-2.5 last:mb-0">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-semibold" style={{ color: JOB_COLORS[job] }}>
+                  {JOB_LABELS_FLAT[job]}
+                </span>
+                <span className="text-xs text-slate-400">{pct}%</span>
+              </div>
+              <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-500"
+                  style={{ width: `${pct}%`, backgroundColor: JOB_COLORS[job] }} />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* 초기화 버튼 */}
+      {resetConfirm ? (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-3 flex items-center gap-2">
+          <p className="text-xs text-slate-400 shrink-0">정말 초기화할까요?</p>
+          <button onClick={() => setResetConfirm(false)}
+            className="flex-1 border border-slate-200 text-slate-500 text-xs py-2 rounded-lg">
+            취소
+          </button>
+          <button onClick={handleReset}
+            className="flex-1 bg-red-500 text-white text-xs py-2 rounded-lg">
+            초기화
+          </button>
+        </div>
       ) : (
-        <p className="text-center text-xs text-slate-400 mt-2">항목을 선택하면 결과가 나타나요</p>
+        <button onClick={() => setResetConfirm(true)} disabled={answeredCount === 0}
+          className="w-full bg-white rounded-2xl shadow-sm border border-slate-100 py-2.5 text-sm text-slate-400 disabled:opacity-40 hover:border-slate-200 transition-colors">
+          ↺ 초기화
+        </button>
       )}
     </div>
   )
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* 헤더 */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <a href="/" className="text-slate-400 hover:text-slate-600 transition-colors text-sm">← 메인</a>
-            <div className="w-px h-4 bg-slate-200" />
-            <div>
-              <p className="text-xs text-slate-500">{studentName}님 · {sessionRound}차 면담 준비</p>
-              <p className="text-sm font-semibold text-slate-800">나는 어떤 마케터일까?</p>
+      {/* 상단 네비 */}
+      <nav className="bg-white border-b border-slate-100 sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between">
+          <a href="/" className="text-sm text-slate-400 hover:text-slate-600 transition-colors">← 메인</a>
+          <span className="text-xs text-slate-400">{studentName}님 · {sessionRound}차 면담 준비</span>
+          <div className="flex items-center gap-1.5">
+            <div className="h-1.5 w-20 bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-full rounded-full transition-all duration-300"
+                style={{ width: `${(answeredCount / TOTAL_QUESTIONS) * 100}%`, backgroundColor: chartColor }} />
             </div>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-slate-400">응답함</p>
-            <p className="text-sm font-bold text-slate-700">
-              {answeredCount} <span className="font-normal text-slate-400">/ {TOTAL_QUESTIONS}개</span>
-            </p>
+            <span className="text-xs text-slate-500 font-medium">{answeredCount}/{TOTAL_QUESTIONS}</span>
           </div>
         </div>
-        <div className="h-1 bg-slate-100">
-          <div className="h-1 transition-all duration-300"
-            style={{ width: `${(answeredCount / TOTAL_QUESTIONS) * 100}%`, backgroundColor: chartColor }} />
-        </div>
-      </div>
+      </nav>
 
-      {/* 모바일 차트 */}
-      <div className="lg:hidden max-w-2xl mx-auto px-4 pt-4">{chartCard}</div>
+      {/* 타이틀 섹션 */}
+      <section className="bg-white border-b border-slate-100 py-7 px-4 text-center">
+        <span className="inline-block bg-slate-100 text-slate-500 text-[11px] font-medium px-3 py-1 rounded-full mb-3">
+          디지털 마케터 부트캠프
+        </span>
+        <h1 className="text-2xl font-bold text-slate-900 mb-1.5">나는 어떤 마케터일까? 🎯</h1>
+        <p className="text-sm text-slate-500 mb-0.5">경험이 없어도 괜찮습니다. 관심·성향·재미를 기준으로 솔직하게 체크해주세요.</p>
+        <p className="text-sm text-slate-500 mb-5">체크할수록 나의 직무 적합도가 레이더 차트로 나타납니다.</p>
+        {/* 선택지 범례 — 긍정 옵션만 */}
+        <div className="flex flex-wrap gap-2 justify-center">
+          {ANSWER_OPTIONS.filter(o => o.key > 0).map(opt => (
+            <div key={opt.key}
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 border"
+              style={{
+                borderColor: `${OPTION_COLORS[opt.key]}50`,
+                backgroundColor: `${OPTION_COLORS[opt.key]}0d`,
+              }}>
+              <span className="text-xs font-bold" style={{ color: OPTION_COLORS[opt.key] }}>{opt.label}</span>
+              <span className="text-xs text-slate-500">{opt.desc}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 모바일: 오른쪽 패널 상단 배치 */}
+      <div className="lg:hidden max-w-2xl mx-auto px-4 pt-4">{rightPanel}</div>
 
       {/* 메인 레이아웃 */}
-      <div className="max-w-5xl mx-auto px-4 pb-32 lg:flex lg:gap-8 lg:items-start">
+      <div className="max-w-6xl mx-auto px-4 py-5 pb-24 lg:flex lg:gap-5 lg:items-start">
 
-        {/* 질문 영역 */}
-        <div className="flex-1 min-w-0">
-          {/* 안내 + 범례 */}
-          <div className="py-3">
-            <p className="text-sm text-slate-500 text-center mb-1.5">
-              경험이 없어도 괜찮아요. 관심·성향·재미 기준으로 솔직하게 선택해 주세요.
-            </p>
-            {/* 범례 - 한 줄로 표시 */}
-            <div className="flex flex-wrap justify-center gap-x-3 gap-y-0">
-              {ANSWER_OPTIONS.map((opt) => (
-                <span key={opt.key} className="text-[10px] text-slate-400 whitespace-nowrap">
-                  <span className={`font-semibold ${opt.key === 0 ? 'text-slate-400' : 'text-slate-600'}`}>
-                    {opt.label}
-                  </span>
-                  {' '}{opt.desc}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* 질문 카테고리별 */}
-          {CATEGORIES.map((cat) => {
-            const catQuestions = QUESTIONS.filter((q) => q.category === cat.key)
-            if (!catQuestions.length) return null
-            const catAnswered = catQuestions.filter((q) => answers[q.id] !== undefined).length
+        {/* 왼쪽: 질문 목록 */}
+        <div className="flex-1 min-w-0 space-y-4">
+          {CATEGORIES.map(cat => {
+            const catQs = QUESTIONS.filter(q => q.category === cat.key)
+            if (!catQs.length) return null
+            const catDone = catQs.filter(q => answers[q.id] !== undefined).length
 
             return (
-              <div key={cat.key} className="mb-4">
-                <div className="flex items-center gap-2 mb-1.5 px-1">
-                  <span className="text-sm">{cat.emoji}</span>
-                  <span className="text-xs font-semibold text-slate-700">{cat.label}</span>
-                  <span className="ml-auto text-xs text-slate-400">{catAnswered}/{catQuestions.length}</span>
+              <div key={cat.key} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                {/* 카테고리 헤더 */}
+                <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center gap-2">
+                  <span className="text-base">{cat.emoji}</span>
+                  <span className="text-sm font-semibold text-slate-800">{cat.label}</span>
+                  <span className="text-[11px] text-slate-400 hidden sm:inline ml-1">
+                    JD 키워드: {CAT_KEYWORDS[cat.key]}
+                  </span>
+                  <span className="ml-auto text-xs text-slate-400 font-medium">{catDone}/{catQs.length}</span>
                 </div>
 
-                <div className="space-y-1.5">
-                  {catQuestions.map((q) => {
-                    const selection = answers[q.id]
-                    const isPositive = selection !== undefined && selection > 0
-                    const isNegative = selection === 0
+                {/* 질문 목록 */}
+                <div className="divide-y divide-slate-50">
+                  {catQs.map(q => {
+                    const sel = answers[q.id]
+                    const isAnswered = sel !== undefined
+                    const optColor = isAnswered ? OPTION_COLORS[sel] : null
 
                     return (
-                      <div
-                        key={q.id}
-                        className={`rounded-xl border px-3 py-2 transition-colors ${
-                          isPositive ? 'border-blue-200 bg-blue-50/40'
-                          : isNegative ? 'border-slate-300 bg-slate-50'
-                          : 'border-slate-200 bg-white'
-                        }`}
-                      >
-                        <p className="text-sm font-semibold text-slate-800 leading-snug mb-1.5">{q.text}</p>
-                        <div className="grid grid-cols-5 gap-1">
-                          {ANSWER_OPTIONS.map((opt) => {
-                            const isSelected = selection === opt.key
-                            const isHardOption = opt.key === 0
+                      <div key={q.id} className="px-5 py-3">
+                        <div className="flex items-start gap-3">
+                          {/* 체크박스 */}
+                          <div className={`w-[18px] h-[18px] rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                            !isAnswered ? 'border-slate-200 bg-white' : ''
+                          }`} style={isAnswered ? {
+                            backgroundColor: optColor!,
+                            borderColor: optColor!,
+                          } : {}}>
+                            {isAnswered && (
+                              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" strokeWidth={3.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            {/* 선택된 옵션 뱃지 */}
+                            {isAnswered && (
+                              <span className="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full text-white mb-0.5"
+                                style={{ backgroundColor: optColor! }}>
+                                {ANSWER_OPTIONS.find(o => o.key === sel)?.label}
+                              </span>
+                            )}
+                            {/* 질문 텍스트 */}
+                            <p className="text-[14px] font-semibold text-slate-800 leading-snug">{q.text}</p>
+                          </div>
+                        </div>
+
+                        {/* 선택 버튼 */}
+                        <div className="flex gap-1 mt-2 ml-[30px]">
+                          {ANSWER_OPTIONS.map(opt => {
+                            const isSelected = sel === opt.key
                             return (
-                              <button
-                                key={opt.key}
-                                onClick={() => selectOption(q.id, opt.key)}
-                                className={`py-1.5 rounded-lg text-[11px] font-medium border transition-all ${
+                              <button key={opt.key} onClick={() => selectOption(q.id, opt.key)}
+                                className={`flex-1 py-1.5 text-[11px] font-medium rounded-lg border transition-all ${
                                   isSelected
-                                    ? isHardOption
-                                      ? 'bg-slate-400 text-white border-slate-400'
-                                      : 'text-white border-transparent shadow-sm'
-                                    : isHardOption
-                                      ? 'bg-white text-slate-400 border-slate-200 hover:border-slate-400 hover:text-slate-500'
-                                      : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-600'
+                                    ? 'text-white border-transparent shadow-sm'
+                                    : opt.key === 0
+                                      ? 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
+                                      : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
                                 }`}
-                                style={isSelected && !isHardOption ? { backgroundColor: chartColor, borderColor: chartColor } : {}}
-                              >
+                                style={isSelected ? {
+                                  backgroundColor: OPTION_COLORS[opt.key],
+                                  borderColor: OPTION_COLORS[opt.key],
+                                } : {}}>
                                 {opt.label}
                               </button>
                             )
@@ -235,49 +349,26 @@ export default function CompetencyChecklist({ initialAnswers, sessionRound, stud
           })}
         </div>
 
-        {/* 데스크톱 차트 — h-screen sticky, 세로 가운데 정렬 */}
-        <div className="hidden lg:flex lg:flex-col lg:justify-center w-[380px] shrink-0 sticky top-0 h-screen pt-[72px] pb-8">
-          {chartCard}
+        {/* 오른쪽 패널 — 데스크톱 sticky */}
+        <div className="hidden lg:block w-[320px] shrink-0 sticky top-14"
+          style={{ maxHeight: 'calc(100vh - 4rem)', overflowY: 'auto' }}>
+          {rightPanel}
         </div>
       </div>
 
-      {/* 하단 버튼 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 z-10">
-        <div className="max-w-5xl mx-auto">
+      {/* 하단 저장 버튼 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur border-t border-slate-100 p-3 z-10">
+        <div className="max-w-6xl mx-auto flex items-center gap-3 lg:justify-end">
           {saveMsg && (
-            <p className="text-center text-sm text-emerald-600 font-medium mb-2">{saveMsg}</p>
+            <p className="text-sm text-emerald-600 font-medium">{saveMsg}</p>
           )}
-          {resetConfirm ? (
-            <div className="flex gap-2 items-center">
-              <p className="text-sm text-slate-500 shrink-0">정말 초기화할까요?</p>
-              <button onClick={() => setResetConfirm(false)}
-                className="flex-1 border border-slate-300 text-slate-600 font-semibold py-3 rounded-xl text-sm">
-                취소
-              </button>
-              <button onClick={handleReset}
-                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 rounded-xl text-sm">
-                초기화
-              </button>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setResetConfirm(true)}
-                disabled={answeredCount === 0}
-                className="border border-slate-300 disabled:border-slate-200 disabled:text-slate-300 text-slate-500 font-semibold py-3 px-4 rounded-xl text-sm"
-              >
-                초기화
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={isPending || answeredCount === 0}
-                className="flex-1 disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold py-3 rounded-xl text-sm transition-all"
-                style={answeredCount > 0 ? { backgroundColor: chartColor } : {}}
-              >
-                {isPending ? '저장 중...' : saved ? `✓ 저장됨 (${answeredCount}개 응답)` : `${answeredCount}개 항목 저장하기`}
-              </button>
-            </div>
-          )}
+          <button onClick={handleSave} disabled={isPending || answeredCount === 0}
+            className="w-full lg:w-auto lg:min-w-[180px] disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold py-2.5 px-6 rounded-xl text-sm transition-all"
+            style={answeredCount > 0 ? { backgroundColor: chartColor } : {}}>
+            {isPending ? '저장 중...'
+              : saved ? `✓ 저장됨 (${answeredCount}개)`
+              : `${answeredCount}개 항목 저장하기`}
+          </button>
         </div>
       </div>
     </div>
