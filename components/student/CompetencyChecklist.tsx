@@ -196,25 +196,6 @@ export default function CompetencyChecklist({ initialAnswers, initialDay1, sessi
         })}
       </div>
 
-      {/* 초기화 버튼 */}
-      {resetConfirm ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-3 flex items-center gap-2">
-          <p className="text-xs text-slate-400 shrink-0">정말 초기화할까요?</p>
-          <button onClick={() => setResetConfirm(false)}
-            className="flex-1 border border-slate-200 text-slate-500 text-xs py-2 rounded-lg">
-            취소
-          </button>
-          <button onClick={handleReset}
-            className="flex-1 bg-red-500 text-white text-xs py-2 rounded-lg">
-            초기화
-          </button>
-        </div>
-      ) : (
-        <button onClick={() => setResetConfirm(true)} disabled={answeredCount === 0}
-          className="w-full bg-white rounded-2xl shadow-sm border border-slate-100 py-2.5 text-sm text-slate-400 disabled:opacity-40 hover:border-slate-200 transition-colors">
-          ↺ 초기화
-        </button>
-      )}
     </div>
   )
 
@@ -362,12 +343,32 @@ export default function CompetencyChecklist({ initialAnswers, initialDay1, sessi
 
       {/* 하단 저장 버튼 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur border-t border-slate-100 p-3 z-10">
-        <div className="max-w-6xl mx-auto flex items-center gap-3 lg:justify-end">
+        <div className="max-w-6xl mx-auto flex items-center gap-2">
+          {/* 초기화 버튼 */}
+          {answeredCount > 0 && (
+            resetConfirm ? (
+              <>
+                <button onClick={() => setResetConfirm(false)}
+                  className="shrink-0 border border-slate-200 text-slate-500 text-xs py-2 px-3 rounded-lg whitespace-nowrap">
+                  취소
+                </button>
+                <button onClick={handleReset}
+                  className="shrink-0 bg-red-500 text-white text-xs py-2 px-3 rounded-lg font-medium whitespace-nowrap">
+                  초기화
+                </button>
+              </>
+            ) : (
+              <button onClick={() => setResetConfirm(true)}
+                className="shrink-0 text-sm text-slate-400 hover:text-slate-600 py-2 px-2 rounded-lg hover:bg-slate-50 transition-colors whitespace-nowrap">
+                ↺ 초기화
+              </button>
+            )
+          )}
           {saveMsg && (
-            <p className="text-sm text-emerald-600 font-medium">{saveMsg}</p>
+            <p className="flex-1 text-sm text-emerald-600 font-medium text-right">{saveMsg}</p>
           )}
           <button onClick={handleSave} disabled={isPending || answeredCount === 0}
-            className="w-full lg:w-auto lg:min-w-[180px] disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold py-2.5 px-6 rounded-xl text-sm transition-all"
+            className="flex-1 lg:flex-none lg:min-w-[180px] disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold py-2.5 px-6 rounded-xl text-sm transition-all"
             style={answeredCount > 0 ? { backgroundColor: chartColor } : {}}>
             {isPending ? '저장 중...'
               : saved ? `✓ 저장됨 (${answeredCount}개)`

@@ -21,7 +21,20 @@ type Props = {
 }
 
 export default function PostSaveFlow(props: Props) {
-  const [step, setStep] = useState<'day1' | 'slack'>('day1')
+  const [step, setStep] = useState<'choice' | 'day1' | 'slack'>('choice')
+  const [fromDay1, setFromDay1] = useState(false)
+
+  if (step === 'choice') {
+    return (
+      <ChoiceScreen
+        topJob={props.topJob}
+        topJobPct={props.topJobPct}
+        onDirectSlack={() => setStep('slack')}
+        onDay1={() => setStep('day1')}
+        onClose={props.onClose}
+      />
+    )
+  }
 
   if (step === 'day1') {
     return (
@@ -29,7 +42,7 @@ export default function PostSaveFlow(props: Props) {
         topJob={props.topJob}
         sessionRound={props.sessionRound}
         initialDay1={props.initialDay1}
-        onComplete={() => setStep('slack')}
+        onComplete={() => { setFromDay1(true); setStep('slack') }}
         onClose={props.onClose}
       />
     )
@@ -40,8 +53,59 @@ export default function PostSaveFlow(props: Props) {
       studentName={props.studentName}
       topJob={props.topJob}
       topJobPct={props.topJobPct}
+      fromDay1={fromDay1}
       onClose={props.onClose}
     />
+  )
+}
+
+// ── 선택지 화면 ──────────────────────────────────────────────────
+
+function ChoiceScreen({ topJob, topJobPct, onDirectSlack, onDay1, onClose }: {
+  topJob: JobType | null
+  topJobPct: number
+  onDirectSlack: () => void
+  onDay1: () => void
+  onClose: () => void
+}) {
+  const color = topJob ? JOB_COLORS[topJob] : '#64748b'
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl">
+        <button onClick={onClose}
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100">
+          ✕
+        </button>
+
+        <div className="text-center mb-6">
+          <div className="text-4xl mb-3">🎉</div>
+          <h2 className="text-xl font-bold text-slate-900 mb-1">체크리스트 저장 완료!</h2>
+          {topJob && (
+            <div className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full"
+              style={{ backgroundColor: `${color}14` }}>
+              <span className="font-bold" style={{ color }}>{JOB_LABELS_FLAT[topJob]}</span>
+              <span className="text-sm font-medium" style={{ color }}>{topJobPct}% 적합도</span>
+            </div>
+          )}
+        </div>
+
+        <p className="text-sm text-slate-500 text-center mb-4">다음 단계를 선택해주세요</p>
+
+        <div className="space-y-3">
+          <button onClick={onDirectSlack}
+            className="w-full bg-slate-900 text-white rounded-2xl p-4 text-left hover:bg-slate-800 transition-colors active:scale-[0.98]">
+            <div className="font-semibold text-base mb-0.5">💬 이대로 면담하러 가기</div>
+            <div className="text-xs text-slate-400">슬랙 초안을 바로 복사해서 튜터에게 보내기</div>
+          </button>
+          <button onClick={onDay1}
+            className="w-full border-2 border-slate-200 text-slate-700 rounded-2xl p-4 text-left hover:border-slate-300 hover:bg-slate-50 transition-colors active:scale-[0.98]">
+            <div className="font-semibold text-base mb-0.5">📝 나의 경험 정리하고 면담하기</div>
+            <div className="text-xs text-slate-500">DAY 1 경험 정리 후 더 풍부한 면담 가능</div>
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -251,10 +315,11 @@ function FindTab({ data, set }: { data: Day1Data; set: SetFn }) {
 
 // ── 1차 면담 슬랙 초안 화면 ──────────────────────────────────────
 
-function SlackScreen1({ studentName, topJob, topJobPct, onClose }: {
+function SlackScreen1({ studentName, topJob, topJobPct, fromDay1, onClose }: {
   studentName: string
   topJob: JobType | null
   topJobPct: number
+  fromDay1: boolean
   onClose: () => void
 }) {
   const router = useRouter()
@@ -262,11 +327,17 @@ function SlackScreen1({ studentName, topJob, topJobPct, onClose }: {
   const color = topJob ? JOB_COLORS[topJob] : '#64748b'
   const [copied, setCopied] = useState(false)
 
-  const draft = `OO튜터님 안녕하세요, ${studentName}입니다 :)
+  const draft = fromDay1
+    ? `OO튜터님 안녕하세요, ${studentName}입니다 :)
 
 진로 체크리스트와 DAY 1 경험 정리를 완성했어요. 결과를 보니 **${jobName}** 적합도가 가장 높게 나왔는데요 (${topJobPct}%),
 
 1차 면담을 요청드리고 싶습니다. [지금 / __시에] 잠깐 시간 괜찮으실까요? 10~15분 정도 여쭤보고 싶은 게 있어요 :)`
+    : `OO튜터님 안녕하세요, ${studentName}입니다 :)
+
+진로 체크리스트를 완성했어요. 결과를 보니 **${jobName}** 적합도가 가장 높게 나왔는데요 (${topJobPct}%),
+
+면담을 요청드리고 싶습니다. [지금 / __시에] 잠깐 시간 괜찮으실까요? 10~15분 정도 여쭤보고 싶은 게 있어요 :)`
 
   const handleCopy = () => {
     navigator.clipboard.writeText(draft)
@@ -275,7 +346,7 @@ function SlackScreen1({ studentName, topJob, topJobPct, onClose }: {
   }
 
   const handleDone = () => {
-    router.refresh()
+    if (fromDay1) router.refresh()
     onClose()
   }
 
@@ -285,7 +356,9 @@ function SlackScreen1({ studentName, topJob, topJobPct, onClose }: {
       <div className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl">
         <div className="text-center mb-4">
           <div className="text-3xl mb-2">🎉</div>
-          <h2 className="text-lg font-bold text-slate-900 mb-0.5">DAY 1 완료!</h2>
+          <h2 className="text-lg font-bold text-slate-900 mb-0.5">
+            {fromDay1 ? 'DAY 1 완료!' : '체크리스트 완료!'}
+          </h2>
           {topJob && (
             <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full"
               style={{ backgroundColor: `${color}14` }}>
@@ -295,7 +368,9 @@ function SlackScreen1({ studentName, topJob, topJobPct, onClose }: {
           )}
         </div>
 
-        <p className="text-xs font-semibold text-slate-700 mb-1">💬 1차 면담 슬랙 초안</p>
+        <p className="text-xs font-semibold text-slate-700 mb-1">
+          {fromDay1 ? '💬 1차 면담 슬랙 초안' : '💬 면담 슬랙 초안'}
+        </p>
         <p className="text-xs text-slate-400 mb-3">「OO」와 「[지금/__시에]」 부분을 수정한 후 복사하세요</p>
 
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4">
