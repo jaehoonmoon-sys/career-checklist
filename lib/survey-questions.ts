@@ -27,6 +27,15 @@ export const ANSWER_OPTIONS = [
   { key: 4, label: '경험있다', desc: '실제로 해본 적 있는 것' },
 ] as const
 
+// 답변 선택지별 점수 가중치: 어렵다=-1, 관심있다=1, 잘한다/재미있다=2, 경험있다=3
+export const ANSWER_WEIGHTS: Record<number, number> = {
+  0: -1,
+  1: 1,
+  2: 2,
+  3: 2,
+  4: 3,
+}
+
 type JobWeight = { job: JobType; weight: 1 | 2 }
 
 export type Question = {
@@ -129,7 +138,8 @@ export function calcMaxScores(): Record<JobType, number> {
   const maxScores = { performance: 0, content: 0, brand: 0, growth: 0, crm: 0, ae: 0 }
   for (const q of QUESTIONS) {
     for (const { job, weight } of q.jobs) {
-      maxScores[job] += weight
+      // 최대 답변 가중치 = 3 (경험있다)
+      maxScores[job] += weight * 3
     }
   }
   return maxScores
@@ -139,9 +149,10 @@ export function calcJobScores(answers: Record<string, number>): Record<JobType, 
   const scores = { performance: 0, content: 0, brand: 0, growth: 0, crm: 0, ae: 0 }
   for (const q of QUESTIONS) {
     const selected = answers[q.id]
-    if (selected === undefined || selected === 0) continue
+    if (selected === undefined) continue
+    const answerWeight = ANSWER_WEIGHTS[selected]
     for (const { job, weight } of q.jobs) {
-      scores[job] += weight
+      scores[job] += weight * answerWeight
     }
   }
   return scores

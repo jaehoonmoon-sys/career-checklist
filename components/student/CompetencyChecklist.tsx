@@ -6,7 +6,7 @@ import {
   PolarRadiusAxis, ResponsiveContainer,
 } from 'recharts'
 import {
-  QUESTIONS, CATEGORIES, ANSWER_OPTIONS, JOB_LABELS, JOB_LABELS_FLAT,
+  QUESTIONS, CATEGORIES, ANSWER_OPTIONS, ANSWER_WEIGHTS, JOB_LABELS, JOB_LABELS_FLAT,
   calcJobScores, calcMaxScores, type JobType,
 } from '@/lib/survey-questions'
 import { saveCompetencyAnswers } from '@/app/actions/checklist'
@@ -77,19 +77,19 @@ export default function CompetencyChecklist({ initialAnswers, sessionRound, stud
   const [resetConfirm, setResetConfirm] = useState(false)
 
   const answeredCount = Object.keys(answers).length
-  const positiveCount = Object.values(answers).filter(v => v > 0).length
+  const positiveCount = Object.entries(answers).filter(([, v]) => ANSWER_WEIGHTS[v] > 0).length
 
   const jobScores = useMemo(() => calcJobScores(answers), [answers])
 
   const radarData = JOB_ORDER.map((job) => {
-    const raw = (jobScores[job] / MAX_SCORES[job]) * 100
+    const raw = Math.max(0, (jobScores[job] / MAX_SCORES[job]) * 100)
     return { subject: JOB_LABELS[job], value: toDisplayValue(raw), fullMark: 100 }
   })
 
   const jobPercents = useMemo(() =>
     JOB_ORDER.reduce((acc, job) => ({
       ...acc,
-      [job]: Math.round((jobScores[job] / MAX_SCORES[job]) * 100),
+      [job]: Math.max(0, Math.round((jobScores[job] / MAX_SCORES[job]) * 100)),
     }), {} as Record<JobType, number>),
   [jobScores])
 
