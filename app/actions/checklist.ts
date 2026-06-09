@@ -32,7 +32,7 @@ export async function getStudentResponse(sessionRound: number) {
 
 export async function saveCompetencyAnswers(
   sessionRound: number,
-  competencyAnswers: Record<string, number[]>
+  competencyAnswers: Record<string, number>
 ) {
   const cookieStore = await cookies()
   const studentId = cookieStore.get('cc_student_id')?.value

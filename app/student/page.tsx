@@ -14,8 +14,8 @@ export default async function StudentPage() {
   const sessionRound = 1
 
   const response = await getStudentResponse(sessionRound)
-  const initialAnswers: Record<string, number[]> =
-    (response?.competency_answers as Record<string, number[]>) ?? {}
+  const initialAnswers: Record<string, number> =
+    (response?.competency_answers as Record<string, number>) ?? {}
 
   return (
     <CompetencyChecklist
