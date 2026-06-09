@@ -23,6 +23,33 @@ const JOB_COLORS: Record<JobType, string> = {
   ae: '#6366f1',
 }
 
+// 초반 체크에서도 차트가 크게 보이도록 0.55제곱 스케일 적용
+const toDisplayValue = (rawPercent: number) =>
+  rawPercent === 0 ? 0 : Math.round(Math.pow(rawPercent / 100, 0.55) * 100)
+
+// PolarAngleAxis 줄바꿈 처리
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const CustomTick = ({ x, y, payload }: any) => {
+  const lines = payload.value.split('\n')
+  return (
+    <g transform={`translate(${x},${y})`}>
+      {lines.map((line: string, i: number) => (
+        <text
+          key={i}
+          x={0}
+          y={0}
+          dy={i * 13 - (lines.length - 1) * 6.5}
+          textAnchor="middle"
+          fill="#64748b"
+          fontSize={11}
+        >
+          {line}
+        </text>
+      ))}
+    </g>
+  )
+}
+
 type Props = {
   initialAnswers: Record<string, number[]>
   sessionRound: number
@@ -34,23 +61,28 @@ export default function CompetencyChecklist({ initialAnswers, sessionRound, stud
   const [saved, setSaved] = useState(Object.keys(initialAnswers).length > 0)
   const [isPending, startTransition] = useTransition()
   const [saveMsg, setSaveMsg] = useState('')
+  const [resetConfirm, setResetConfirm] = useState(false)
 
   const answeredCount = Object.keys(answers).filter((k) => answers[k].length > 0).length
   const totalChecked = Object.values(answers).reduce((s, v) => s + v.length, 0)
 
   const jobScores = useMemo(() => calcJobScores(answers), [answers])
 
-  const radarData = JOB_ORDER.map((job) => ({
-    subject: JOB_LABELS[job],
-    value: Math.round((jobScores[job] / MAX_SCORES[job]) * 100),
-    fullMark: 100,
-  }))
+  const radarData = JOB_ORDER.map((job) => {
+    const rawPercent = (jobScores[job] / MAX_SCORES[job]) * 100
+    return {
+      subject: JOB_LABELS[job],
+      value: toDisplayValue(rawPercent),
+      fullMark: 100,
+    }
+  })
 
   const topJob = JOB_ORDER.reduce((a, b) => jobScores[a] >= jobScores[b] ? a : b)
   const chartColor = totalChecked > 0 ? JOB_COLORS[topJob] : '#94a3b8'
 
   const toggle = (qId: string, optKey: number) => {
     setSaved(false)
+    setResetConfirm(false)
     setAnswers((prev) => {
       const cur = prev[qId] ?? []
       return {
@@ -63,6 +95,7 @@ export default function CompetencyChecklist({ initialAnswers, sessionRound, stud
   }
 
   const handleSave = () => {
+    setResetConfirm(false)
     startTransition(async () => {
       const result = await saveCompetencyAnswers(sessionRound, answers)
       if (result?.error) { setSaveMsg(result.error) }
@@ -70,36 +103,41 @@ export default function CompetencyChecklist({ initialAnswers, sessionRound, stud
     })
   }
 
+  const handleReset = () => {
+    setAnswers({})
+    setSaved(false)
+    setSaveMsg('')
+    setResetConfirm(false)
+  }
+
   const chartCard = (
     <div className="bg-white rounded-2xl border border-slate-200 p-4">
       <p className="text-xs text-slate-400 text-center mb-1">직무 지향점</p>
-      <ResponsiveContainer width="100%" height={220}>
-        <RadarChart data={radarData} margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
+      <ResponsiveContainer width="100%" height={280}>
+        <RadarChart data={radarData} margin={{ top: 16, right: 36, bottom: 16, left: 36 }}>
           <PolarGrid gridType="polygon" stroke="#e2e8f0" />
           <PolarAngleAxis
             dataKey="subject"
-            tick={{ fontSize: 10, fill: '#64748b' }}
+            tick={(props) => <CustomTick {...props} />}
           />
           <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
           <Radar
             dataKey="value"
             stroke={chartColor}
             fill={chartColor}
-            fillOpacity={0.35}
-            dot={{ r: 3, fill: chartColor }}
-            animationDuration={300}
+            fillOpacity={0.4}
+            dot={{ r: 4, fill: chartColor }}
+            animationDuration={250}
+            animationBegin={0}
           />
         </RadarChart>
       </ResponsiveContainer>
-      {totalChecked > 0 && (
-        <p className="text-center text-xs font-medium mt-1" style={{ color: chartColor }}>
-          ✨ 가장 잘 맞는 직무: {JOB_LABELS[topJob].replace('\n', ' ')}
+      {totalChecked > 0 ? (
+        <p className="text-center text-xs font-semibold mt-1" style={{ color: chartColor }}>
+          ✨ {JOB_LABELS[topJob].replace('\n', ' ')} 지향
         </p>
-      )}
-      {totalChecked === 0 && (
-        <p className="text-center text-xs text-slate-400 mt-1">
-          항목을 체크하면 결과가 나타나요
-        </p>
+      ) : (
+        <p className="text-center text-xs text-slate-400 mt-1">항목을 체크하면 결과가 나타나요</p>
       )}
     </div>
   )
@@ -109,9 +147,18 @@ export default function CompetencyChecklist({ initialAnswers, sessionRound, stud
       {/* 헤더 */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div>
-            <p className="text-xs text-slate-500">{studentName}님 · {sessionRound}차 면담 준비</p>
-            <p className="text-sm font-semibold text-slate-800">나는 어떤 마케터일까?</p>
+          <div className="flex items-center gap-3">
+            <a
+              href="/"
+              className="text-slate-400 hover:text-slate-600 transition-colors text-sm flex items-center gap-1"
+            >
+              ← 메인
+            </a>
+            <div className="w-px h-4 bg-slate-200" />
+            <div>
+              <p className="text-xs text-slate-500">{studentName}님 · {sessionRound}차 면담 준비</p>
+              <p className="text-sm font-semibold text-slate-800">나는 어떤 마케터일까?</p>
+            </div>
           </div>
           <div className="text-right">
             <p className="text-xs text-slate-400">선택됨</p>
@@ -141,14 +188,12 @@ export default function CompetencyChecklist({ initialAnswers, sessionRound, stud
       <div className="max-w-5xl mx-auto px-4 pb-32 lg:flex lg:gap-6 lg:items-start">
         {/* 질문 영역 */}
         <div className="flex-1 min-w-0">
-          {/* 안내 문구 */}
           <div className="py-4 text-center">
             <p className="text-sm text-slate-500">경험이 없어도 괜찮습니다.</p>
             <p className="text-sm text-slate-500">관심·성향·재미를 기준으로 솔직하게 체크해 주세요.</p>
             <p className="text-xs text-slate-400 mt-1">체크할수록 결과가 정확해집니다 ✨</p>
           </div>
 
-          {/* 질문 카테고리별 */}
           {CATEGORIES.map((cat) => {
             const catQuestions = QUESTIONS.filter((q) => q.category === cat.key)
             if (!catQuestions.length) return null
@@ -207,29 +252,56 @@ export default function CompetencyChecklist({ initialAnswers, sessionRound, stud
         </div>
 
         {/* 데스크톱 차트 (sticky) */}
-        <div className="hidden lg:block w-72 shrink-0 sticky top-20 pt-4">
+        <div className="hidden lg:block w-80 shrink-0 sticky top-20 pt-4">
           {chartCard}
         </div>
       </div>
 
-      {/* 하단 저장 버튼 */}
+      {/* 하단 버튼 영역 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4">
         <div className="max-w-5xl mx-auto">
           {saveMsg && (
             <p className="text-center text-sm text-emerald-600 font-medium mb-2">{saveMsg}</p>
           )}
-          <button
-            onClick={handleSave}
-            disabled={isPending || totalChecked === 0}
-            className="w-full disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold py-3 rounded-xl text-sm transition-all"
-            style={totalChecked > 0 ? { backgroundColor: chartColor } : {}}
-          >
-            {isPending
-              ? '저장 중...'
-              : saved
-              ? `✓ 저장됨 (${answeredCount}개 응답)`
-              : `${answeredCount}개 항목 저장하기`}
-          </button>
+          {resetConfirm ? (
+            <div className="flex gap-2 items-center">
+              <p className="text-sm text-slate-500 mr-1 shrink-0">정말 초기화할까요?</p>
+              <button
+                onClick={() => setResetConfirm(false)}
+                className="flex-1 border border-slate-300 text-slate-600 font-semibold py-3 rounded-xl text-sm"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleReset}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 rounded-xl text-sm"
+              >
+                초기화
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setResetConfirm(true)}
+                disabled={totalChecked === 0}
+                className="border border-slate-300 disabled:border-slate-200 disabled:text-slate-300 text-slate-500 font-semibold py-3 px-4 rounded-xl text-sm transition-all"
+              >
+                초기화
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={isPending || totalChecked === 0}
+                className="flex-1 disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold py-3 rounded-xl text-sm transition-all"
+                style={totalChecked > 0 ? { backgroundColor: chartColor } : {}}
+              >
+                {isPending
+                  ? '저장 중...'
+                  : saved
+                  ? `✓ 저장됨 (${answeredCount}개 응답)`
+                  : `${answeredCount}개 항목 저장하기`}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
