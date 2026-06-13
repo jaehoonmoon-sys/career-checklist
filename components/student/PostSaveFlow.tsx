@@ -3,8 +3,8 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { JOB_LABELS_FLAT, type JobType } from '@/lib/survey-questions'
-import { saveDay1 } from '@/app/actions/checklist'
-import { type Day1Data, EMPTY_DAY1 } from '@/lib/types'
+import { saveDay1, saveNextSteps } from '@/app/actions/checklist'
+import { type Day1Data, EMPTY_DAY1, NEXT_STEPS_ITEMS } from '@/lib/types'
 
 const JOB_COLORS: Record<JobType, string> = {
   performance: '#3b82f6', content: '#8b5cf6', brand: '#ec4899',
@@ -125,6 +125,7 @@ export function Day1FormScreen({ topJob, sessionRound, initialDay1, onComplete, 
   const [data, setData] = useState<Day1Data>({ ...EMPTY_DAY1, ...initialDay1 })
   const [isPending, startTransition] = useTransition()
   const [saveMsg, setSaveMsg] = useState('')
+  const [showNextSteps, setShowNextSteps] = useState(false)
 
   const set: SetFn = (key) => (e) =>
     setData(prev => ({ ...prev, [key]: e.target.value }))
@@ -133,8 +134,18 @@ export function Day1FormScreen({ topJob, sessionRound, initialDay1, onComplete, 
     startTransition(async () => {
       const result = await saveDay1(sessionRound, data)
       if (result?.error) setSaveMsg(result.error)
-      else onComplete()
+      else setShowNextSteps(true)
     })
+  }
+
+  if (showNextSteps) {
+    return (
+      <NextStepsScreen
+        initialNextSteps={data.next_steps}
+        sessionRound={sessionRound}
+        onComplete={onComplete}
+      />
+    )
   }
 
   return (
@@ -341,4 +352,82 @@ function D1Textarea({ value, onChange, placeholder, rows = 4 }: {
   )
 }
 
+// ── 저장 후 다음 단계 안내 화면 ──────────────────────────────────
 
+function NextStepsScreen({ initialNextSteps, sessionRound, onComplete }: {
+  initialNextSteps: Record<string, boolean>
+  sessionRound: number
+  onComplete: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-white">
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-lg mx-auto px-4 py-8">
+          <div className="text-center mb-6">
+            <div className="text-5xl mb-3">🎉</div>
+            <h2 className="text-xl font-bold text-slate-900 mb-2">경험 정리 완료!</h2>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              이제 틈틈이 아래 내용들을 해보세요.<br />
+              완료한 항목에 직접 체크하면서 취업 준비를 이어가세요.
+            </p>
+          </div>
+          <NextStepsChecklist initialNextSteps={initialNextSteps} sessionRound={sessionRound} />
+        </div>
+      </div>
+      <div className="bg-white border-t border-slate-100 p-4 shrink-0">
+        <div className="max-w-lg mx-auto">
+          <button onClick={onComplete}
+            className="w-full bg-slate-900 text-white font-semibold py-3 rounded-xl text-sm">
+            확인
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── 다음 단계 체크리스트 (export — 사이드바에서도 사용) ──────────
+
+export function NextStepsChecklist({ initialNextSteps, sessionRound }: {
+  initialNextSteps: Record<string, boolean>
+  sessionRound: number
+}) {
+  const [checks, setChecks] = useState<Record<string, boolean>>(initialNextSteps)
+  const [, startTransition] = useTransition()
+
+  const toggle = (item: string) => {
+    const updated = { ...checks, [item]: !checks[item] }
+    setChecks(updated)
+    startTransition(async () => { await saveNextSteps(sessionRound, updated) })
+  }
+
+  const doneCount = NEXT_STEPS_ITEMS.filter(item => checks[item]).length
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs text-slate-400">진행 현황</p>
+        <p className="text-xs font-semibold text-slate-600">{doneCount} / {NEXT_STEPS_ITEMS.length}</p>
+      </div>
+      <div className="space-y-3">
+        {NEXT_STEPS_ITEMS.map(item => (
+          <label key={item} className="flex items-start gap-3 cursor-pointer group">
+            <button type="button" onClick={() => toggle(item)}
+              className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                checks[item] ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 group-hover:border-slate-400'
+              }`}>
+              {checks[item] && (
+                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </button>
+            <span className={`text-sm leading-relaxed ${checks[item] ? 'text-emerald-600 line-through' : 'text-slate-700'}`}>
+              {item}
+            </span>
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}

@@ -24,11 +24,21 @@ export const EMPTY_EXPERIENCE: ExperienceData = {
 }
 
 // ── DAY 1 | 나의 경험 꺼내기 ─────────────────────────────────────
+export const NEXT_STEPS_ITEMS = [
+  '캠프 커리큘럼 중 흥미로웠던 영역을 정리해봤다',
+  '나의 강점 3가지를 경험 근거와 함께 써봤다',
+  '목표 직무 1~2개를 정했다',
+  '관심 산업 Top 3를 정했다',
+  '대행사 vs 인하우스, 선호 회사 규모를 생각해봤다',
+  '원티드·사람인에서 목표 JD를 1개 찾아 저장했다',
+  '나의 취업 나침반 초안을 써봤다',
+] as const
+
 export type Day1Data = {
   work: string           // 일/알바/직장 경험
   school: string         // 학교/학습 경험
   personal: string       // 개인 활동
-  // 캠프 프로젝트 테이블 (기초/심화 × 역할/만든것/기억)
+  // 캠프 프로젝트 (기초/심화 × 역할/만든것/기억)
   camp_basic_role: string
   camp_basic_made: string
   camp_basic_memory: string
@@ -39,6 +49,7 @@ export type Day1Data = {
   good_at: string        // 잘한다고 느꼈던 순간
   dislike: string        // 하기 싫었던 것 + 이유
   today_discovery: string
+  next_steps: Record<string, boolean>  // 다음 단계 자기 체크
 }
 
 export const EMPTY_DAY1: Day1Data = {
@@ -46,6 +57,7 @@ export const EMPTY_DAY1: Day1Data = {
   camp_basic_role: '', camp_basic_made: '', camp_basic_memory: '',
   camp_adv_role: '', camp_adv_made: '', camp_adv_memory: '',
   energy_flow: '', good_at: '', dislike: '', today_discovery: '',
+  next_steps: {},
 }
 
 // ── DAY 2 | 커리큘럼 체크 테이블 ─────────────────────────────────

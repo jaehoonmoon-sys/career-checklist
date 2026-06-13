@@ -12,6 +12,7 @@ import {
 } from '@/lib/survey-questions'
 import { saveTutorComment } from '@/app/actions/admin'
 import type { StudentRow } from '@/app/actions/admin'
+import { NEXT_STEPS_ITEMS } from '@/lib/types'
 
 const JOB_ORDER: JobType[] = ['performance', 'content', 'brand', 'growth', 'crm', 'ae']
 
@@ -442,7 +443,7 @@ function JourneyView({ student }: { student: StudentRow }) {
       )}
 
       {/* DAY 1 데이터 */}
-      {student.day1_data && Object.values(student.day1_data).some(v => v?.trim()) && (
+      {student.day1_data && Object.values(student.day1_data as Record<string, unknown>).some(v => typeof v === 'string' && v.trim()) && (
         <DayDataBlock title="📅 DAY 1 | 나의 경험 꺼내기" fields={[
           { key: 'work',              label: '💼 일/알바/직장 경험' },
           { key: 'school',            label: '🎓 학교/학습 경험' },
@@ -459,6 +460,9 @@ function JourneyView({ student }: { student: StudentRow }) {
           { key: 'today_discovery',   label: '✅ 오늘의 발견' },
         ]} data={student.day1_data as Record<string, string>} />
       )}
+
+      {/* 다음 단계 자기 체크 현황 */}
+      <NextStepsAdminBlock day1Data={student.day1_data} />
 
       {/* DAY 2+3 데이터 */}
       {student.day23_data && Object.values(student.day23_data).some(v => v && String(v).trim()) && (
@@ -513,6 +517,42 @@ function JourneyView({ student }: { student: StudentRow }) {
           <p className="text-sm">아직 경험 정리를 작성하지 않았어요</p>
         </div>
       )}
+    </div>
+  )
+}
+
+function NextStepsAdminBlock({ day1Data }: { day1Data: unknown }) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ns = (day1Data as any)?.next_steps as Record<string, boolean> | undefined
+  if (!ns || Object.keys(ns).length === 0) return null
+  const doneCount = NEXT_STEPS_ITEMS.filter(item => ns[item]).length
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+      <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+        <p className="text-xs font-semibold text-slate-700">✅ 다음 단계 진행 현황</p>
+        <p className="text-xs text-slate-400 font-medium">{doneCount} / {NEXT_STEPS_ITEMS.length}</p>
+      </div>
+      <div className="p-4 space-y-2">
+        {NEXT_STEPS_ITEMS.map(item => {
+          const checked = ns[item] ?? false
+          return (
+            <div key={item} className="flex items-center gap-2.5">
+              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
+                checked ? 'bg-emerald-500 border-emerald-500' : 'border-slate-200'
+              }`}>
+                {checked && (
+                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+              <span className={`text-xs leading-relaxed ${checked ? 'text-emerald-700 line-through' : 'text-slate-500'}`}>
+                {item}
+              </span>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

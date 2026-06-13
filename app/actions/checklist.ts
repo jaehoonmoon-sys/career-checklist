@@ -154,6 +154,34 @@ export async function skipTutorComment1(sessionRound: number) {
   return { success: true }
 }
 
+export async function saveNextSteps(sessionRound: number, nextSteps: Record<string, boolean>) {
+  const cookieStore = await cookies()
+  const studentId = cookieStore.get('cc_student_id')?.value
+  if (!studentId) return { error: '로그인이 필요합니다.' }
+
+  const { data: existing } = await supabase
+    .from('cc_checklist_responses')
+    .select('day1_data')
+    .eq('student_id', Number(studentId))
+    .eq('session_round', sessionRound)
+    .single()
+
+  const currentDay1 = (existing?.day1_data as Record<string, unknown>) ?? {}
+  const adminClient = createAdminClient()
+
+  const { error } = await adminClient
+    .from('cc_checklist_responses')
+    .update({ day1_data: { ...currentDay1, next_steps: nextSteps } })
+    .eq('student_id', Number(studentId))
+    .eq('session_round', sessionRound)
+
+  if (error) return { error: '저장 중 오류가 발생했습니다.' }
+
+  revalidatePath('/student')
+  revalidatePath('/admin')
+  return { success: true }
+}
+
 export type RollbackTarget = 'checklist' | 'day1' | 'day23' | 'day5'
 
 export async function rollbackStage(

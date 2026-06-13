@@ -11,7 +11,7 @@ import {
   type CurrRow, type WsRow, type WenvRow,
 } from '@/lib/types'
 import CompetencyChecklist from './CompetencyChecklist'
-import { Day1FormScreen } from './PostSaveFlow'
+import { Day1FormScreen, NextStepsChecklist } from './PostSaveFlow'
 
 const JOB_COLORS: Record<JobType, string> = {
   performance: '#3b82f6', content: '#8b5cf6', brand: '#ec4899',
@@ -92,75 +92,94 @@ export default function CareerJourneyView({
           </div>
         </nav>
 
-        <div className="max-w-2xl mx-auto px-4 py-6 space-y-4 pb-16">
+        <div className="max-w-5xl mx-auto px-4 py-6 pb-16 lg:flex lg:gap-6 lg:items-start">
 
-          {/* 직무 적합도 결과 카드 */}
-          <div className="bg-white rounded-2xl border border-slate-100 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-bold text-slate-800">📊 직무 적합도 결과</p>
-              <button onClick={() => setEditMode('checklist')}
-                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium underline underline-offset-2">
-                수정하기
-              </button>
-            </div>
+          {/* 메인 콘텐츠 */}
+          <div className="flex-1 min-w-0 space-y-4">
 
-            {topJob && (
-              <div className="flex items-center gap-2 rounded-xl px-4 py-2.5 mb-4"
-                style={{ backgroundColor: `${topJobColor}14` }}>
-                <span className="text-xs text-slate-500">1위</span>
-                <span className="text-sm font-bold" style={{ color: topJobColor }}>
-                  {JOB_LABELS_FLAT[topJob]}
-                </span>
-                <span className="text-sm font-semibold ml-auto" style={{ color: topJobColor }}>
-                  {topJobPct}%
-                </span>
+            {/* 직무 적합도 결과 카드 */}
+            <div className="bg-white rounded-2xl border border-slate-100 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm font-bold text-slate-800">📊 직무 적합도 결과</p>
+                <button onClick={() => setEditMode('checklist')}
+                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium underline underline-offset-2">
+                  수정하기
+                </button>
               </div>
-            )}
 
-            <div className="space-y-2.5">
-              {JOB_ORDER.map(job => (
-                <div key={job} className="flex items-center gap-3">
-                  <span className="text-xs text-slate-500 w-20 shrink-0 truncate">
-                    {JOB_LABELS_FLAT[job]}
+              {topJob && (
+                <div className="flex items-center gap-2 rounded-xl px-4 py-2.5 mb-4"
+                  style={{ backgroundColor: `${topJobColor}14` }}>
+                  <span className="text-xs text-slate-500">1위</span>
+                  <span className="text-sm font-bold" style={{ color: topJobColor }}>
+                    {JOB_LABELS_FLAT[topJob]}
                   </span>
-                  <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="h-2 rounded-full transition-all duration-700"
-                      style={{ width: `${jobPcts[job]}%`, backgroundColor: JOB_COLORS[job] }}
-                    />
-                  </div>
-                  <span className="text-xs font-semibold text-slate-600 w-8 text-right shrink-0">
-                    {jobPcts[job]}%
+                  <span className="text-sm font-semibold ml-auto" style={{ color: topJobColor }}>
+                    {topJobPct}%
                   </span>
                 </div>
-              ))}
+              )}
+
+              <div className="space-y-2.5">
+                {JOB_ORDER.map(job => (
+                  <div key={job} className="flex items-center gap-3">
+                    <span className="text-xs text-slate-500 w-20 shrink-0 truncate">
+                      {JOB_LABELS_FLAT[job]}
+                    </span>
+                    <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="h-2 rounded-full transition-all duration-700"
+                        style={{ width: `${jobPcts[job]}%`, backgroundColor: JOB_COLORS[job] }}
+                      />
+                    </div>
+                    <span className="text-xs font-semibold text-slate-600 w-8 text-right shrink-0">
+                      {jobPcts[job]}%
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
+
+            {/* DAY 1 카드 */}
+            <div className="bg-white rounded-2xl border border-slate-100 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm font-bold text-slate-800">📝 DAY 1 나의 경험</p>
+                <button onClick={() => setEditMode('day1')}
+                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium underline underline-offset-2">
+                  수정하기
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {DAY1_FIELDS.map(({ key, label }) => {
+                  const val = day1Data[key] as string
+                  return (
+                    <div key={key}>
+                      <p className="text-xs font-semibold text-slate-400 mb-1">{label}</p>
+                      {val?.trim() ? (
+                        <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{val}</p>
+                      ) : (
+                        <p className="text-sm text-slate-300 italic">작성하지 않았어요</p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
           </div>
 
-          {/* DAY 1 카드 */}
-          <div className="bg-white rounded-2xl border border-slate-100 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-bold text-slate-800">📝 DAY 1 나의 경험</p>
-              <button onClick={() => setEditMode('day1')}
-                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium underline underline-offset-2">
-                수정하기
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {DAY1_FIELDS.map(({ key, label }) => {
-                const val = day1Data[key]
-                return (
-                  <div key={key}>
-                    <p className="text-xs font-semibold text-slate-400 mb-1">{label}</p>
-                    {val?.trim() ? (
-                      <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{val}</p>
-                    ) : (
-                      <p className="text-sm text-slate-300 italic">작성하지 않았어요</p>
-                    )}
-                  </div>
-                )
-              })}
+          {/* 사이드바: 다음에 해볼 것들 */}
+          <div className="w-full lg:w-64 shrink-0 mt-4 lg:mt-0 lg:sticky lg:top-20">
+            <div className="bg-white rounded-2xl border border-slate-100 p-4">
+              <p className="text-sm font-bold text-slate-800 mb-1">✅ 다음에 해볼 것들</p>
+              <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+                경험 정리가 끝났으면 아래 항목들을 틈틈이 해보세요. 완료하면 체크!
+              </p>
+              <NextStepsChecklist
+                initialNextSteps={day1Data.next_steps ?? {}}
+                sessionRound={sessionRound}
+              />
             </div>
           </div>
 
