@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { JOB_LABELS_FLAT, type JobType } from '@/lib/survey-questions'
-import { saveDay23, saveDay5, skipTutorComment1, rollbackStage, type RollbackTarget } from '@/app/actions/checklist'
+import { saveDay23, saveDay5, rollbackStage, type RollbackTarget } from '@/app/actions/checklist'
 import {
   type Day1Data, type Day23Data, type Day5Data,
   EMPTY_DAY23, EMPTY_DAY5,
@@ -73,21 +73,10 @@ export default function CareerJourneyView({
 }: Props) {
   const router = useRouter()
   const [currentStage, setCurrentStage] = useState(stage)
-  const [showSkipWarning, setShowSkipWarning] = useState(false)
-  const [showSlack2, setShowSlack2] = useState(false)
   const [showRollback, setShowRollback] = useState(false)
-  const [isPending, startTransition] = useTransition()
 
-  const handleSkip = () => {
-    startTransition(async () => {
-      await skipTutorComment1(sessionRound)
-      setCurrentStage(2)
-      setShowSkipWarning(false)
-    })
-  }
-
-  // ─── Stage 1: DAY1 완료, 1차 면담 대기 ────────────────────────
-  if (currentStage === 1) {
+  // ─── Stage 1+: DAY1 완료, 이후 과정 준비 중 ─────────────────
+  if (currentStage >= 1) {
     return (
       <div className="min-h-screen bg-slate-50">
         <nav className="bg-white border-b border-slate-100 sticky top-0 z-10">
@@ -103,60 +92,23 @@ export default function CareerJourneyView({
 
         <div className="max-w-md mx-auto px-4 py-12">
           <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 text-center">
-            <div className="text-5xl mb-4">⏳</div>
+            <div className="text-5xl mb-4">✅</div>
             <h2 className="text-xl font-bold text-slate-900 mb-2">DAY 1 완료!</h2>
-            <p className="text-sm text-slate-500 mb-2 leading-relaxed">
-              튜터님께 슬랙으로 1차 면담을 요청해보세요.
-            </p>
             <p className="text-sm text-slate-500 mb-6 leading-relaxed">
-              튜터님이 피드백을 남기면 DAY 2+3이 열립니다.
+              경험 정리가 완성됐어요.<br />이후 과정은 곧 열릴 예정이에요.
             </p>
 
             {topJob && (
-              <div className="bg-slate-50 rounded-2xl p-4 mb-6">
+              <div className="bg-slate-50 rounded-2xl p-4">
                 <p className="text-[11px] text-slate-400 mb-1">체크리스트 결과</p>
                 <p className="text-base font-bold" style={{ color: JOB_COLORS[topJob] }}>
                   {JOB_LABELS_FLAT[topJob]} {topJobPct}%
                 </p>
               </div>
             )}
-
-            <button onClick={() => router.refresh()}
-              className="w-full bg-slate-900 text-white font-semibold py-3 rounded-xl text-sm mb-3">
-              🔄 새로고침 (면담 완료 후)
-            </button>
-            <button onClick={() => setShowSkipWarning(true)}
-              className="w-full text-xs text-slate-400 hover:text-slate-600 py-2 transition-colors">
-              면담 없이 DAY 2+3 작성하기
-            </button>
           </div>
         </div>
 
-        {/* 건너뛰기 경고 모달 */}
-        {showSkipWarning && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/50" onClick={() => setShowSkipWarning(false)} />
-            <div className="relative bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-              <div className="text-3xl text-center mb-3">⚠️</div>
-              <h3 className="text-base font-bold text-slate-900 text-center mb-2">
-                면담을 먼저 받는 것을 권장해요
-              </h3>
-              <p className="text-sm text-slate-500 text-center mb-5 leading-relaxed">
-                튜터님의 피드백을 받고 DAY 2+3을 작성하면 훨씬 명확한 방향을 잡을 수 있어요. 정말 면담 없이 진행할까요?
-              </p>
-              <div className="flex gap-2">
-                <button onClick={() => setShowSkipWarning(false)}
-                  className="flex-1 border border-slate-200 text-slate-600 font-medium py-2.5 rounded-xl text-sm">
-                  취소
-                </button>
-                <button onClick={handleSkip} disabled={isPending}
-                  className="flex-1 bg-slate-900 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-50">
-                  {isPending ? '처리 중...' : '면담 없이 진행'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
         {showRollback && (
           <RollbackModal currentStage={currentStage} sessionRound={sessionRound} onClose={() => setShowRollback(false)} />
         )}
@@ -164,121 +116,7 @@ export default function CareerJourneyView({
     )
   }
 
-  // ─── Stage 2: DAY2+3 폼 ──────────────────────────────────────
-  if (currentStage === 2) {
-    return (
-      <>
-        <Day23FormScreen
-          studentName={studentName}
-          sessionRound={sessionRound}
-          topJob={topJob}
-          initialData={{ ...EMPTY_DAY23, ...day23Data }}
-          tutorComment={tutorComment1}
-          onComplete={() => { setCurrentStage(3); setShowSlack2(true) }}
-          onRollbackRequest={() => setShowRollback(true)}
-        />
-        {showRollback && (
-          <RollbackModal currentStage={currentStage} sessionRound={sessionRound} onClose={() => setShowRollback(false)} />
-        )}
-      </>
-    )
-  }
-
-  // ─── Stage 3: DAY2+3 완료, 2차 면담 대기 ─────────────────────
-  if (currentStage === 3) {
-    return (
-      <div className="min-h-screen bg-slate-50">
-        <nav className="bg-white border-b border-slate-100 sticky top-0 z-10">
-          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-            <span className="text-sm text-slate-500">{studentName}님</span>
-            <StageProgress stage={3} />
-            <button onClick={() => setShowRollback(true)}
-              className="text-xs text-slate-400 hover:text-amber-600 transition-colors">
-              ↩ 수정하기
-            </button>
-          </div>
-        </nav>
-
-        <div className="max-w-md mx-auto px-4 py-12">
-          <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 text-center">
-            <div className="text-5xl mb-4">⏳</div>
-            <h2 className="text-xl font-bold text-slate-900 mb-2">DAY 2+3 완료!</h2>
-            <p className="text-sm text-slate-500 mb-3 leading-relaxed">
-              튜터님께 슬랙으로 2차 면담을 요청하세요.
-            </p>
-            <div className="bg-orange-50 border border-orange-100 rounded-xl px-4 py-3 mb-6">
-              <p className="text-xs text-orange-700 leading-relaxed">
-                🔒 2차 면담은 필수예요. 튜터님의 피드백을 받아야 최종 정리(DAY 5)가 열립니다.
-              </p>
-            </div>
-            <button onClick={() => router.refresh()}
-              className="w-full bg-slate-900 text-white font-semibold py-3 rounded-xl text-sm">
-              🔄 새로고침 (면담 완료 후)
-            </button>
-          </div>
-        </div>
-
-        {/* 2차 면담 슬랙 초안 오버레이 */}
-        {showSlack2 && (
-          <SlackScreen2
-            studentName={studentName}
-            topJob={topJob}
-            onClose={() => setShowSlack2(false)}
-          />
-        )}
-        {showRollback && (
-          <RollbackModal currentStage={currentStage} sessionRound={sessionRound} onClose={() => setShowRollback(false)} />
-        )}
-      </div>
-    )
-  }
-
-  // ─── Stage 4: DAY5 최종 폼 ───────────────────────────────────
-  if (currentStage === 4) {
-    return (
-      <>
-        <Day5FormScreen
-          studentName={studentName}
-          sessionRound={sessionRound}
-          initialData={{ ...EMPTY_DAY5, ...day5Data }}
-          tutorComment={tutorComment2}
-          onComplete={() => setCurrentStage(5)}
-          onRollbackRequest={() => setShowRollback(true)}
-        />
-        {showRollback && (
-          <RollbackModal currentStage={currentStage} sessionRound={sessionRound} onClose={() => setShowRollback(false)} />
-        )}
-      </>
-    )
-  }
-
-  // ─── Stage 5: 모든 과정 완료 ──────────────────────────────────
-  return (
-    <div className="min-h-screen bg-slate-50">
-      <nav className="bg-white border-b border-slate-100 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <StageProgress stage={5} />
-          <button onClick={() => setShowRollback(true)}
-            className="text-xs text-slate-400 hover:text-amber-600 transition-colors">
-            ↩ 수정하기
-          </button>
-        </div>
-      </nav>
-      <div className="max-w-md mx-auto px-4 py-16 text-center">
-        <div className="text-6xl mb-5">🎉</div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-3">모든 과정 완료!</h2>
-        <p className="text-sm text-slate-500 mb-2 leading-relaxed">
-          DAY 1 → 2+3 → 최종 정리까지 모두 완성했어요.
-        </p>
-        <p className="text-sm text-slate-500 leading-relaxed">
-          세션에서 더욱 풍부한 활동을 할 수 있을 거예요 💪
-        </p>
-      </div>
-      {showRollback && (
-        <RollbackModal currentStage={currentStage} sessionRound={sessionRound} onClose={() => setShowRollback(false)} />
-      )}
-    </div>
-  )
+  return null
 }
 
 // ══════════════════════════════════════════════════════════════════

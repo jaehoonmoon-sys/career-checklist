@@ -22,8 +22,8 @@ type Props = {
 }
 
 export default function PostSaveFlow(props: Props) {
-  const [step, setStep] = useState<'choice' | 'day1' | 'slack'>('choice')
-  const [fromDay1, setFromDay1] = useState(false)
+  const router = useRouter()
+  const [step, setStep] = useState<'choice' | 'day1'>('choice')
 
   if (step === 'choice') {
     return (
@@ -31,31 +31,18 @@ export default function PostSaveFlow(props: Props) {
         topJob={props.topJob}
         topJobPct={props.topJobPct}
         preSelectedJob={props.preSelectedJob}
-        onDirectSlack={() => setStep('slack')}
         onDay1={() => setStep('day1')}
         onClose={props.onClose}
       />
     )
   }
 
-  if (step === 'day1') {
-    return (
-      <Day1FormScreen
-        topJob={props.topJob}
-        sessionRound={props.sessionRound}
-        initialDay1={props.initialDay1}
-        onComplete={() => { setFromDay1(true); setStep('slack') }}
-        onClose={props.onClose}
-      />
-    )
-  }
-
   return (
-    <SlackScreen1
-      studentName={props.studentName}
+    <Day1FormScreen
       topJob={props.topJob}
-      topJobPct={props.topJobPct}
-      fromDay1={fromDay1}
+      sessionRound={props.sessionRound}
+      initialDay1={props.initialDay1}
+      onComplete={() => { router.refresh(); props.onClose() }}
       onClose={props.onClose}
     />
   )
@@ -63,11 +50,10 @@ export default function PostSaveFlow(props: Props) {
 
 // ── 선택지 화면 ──────────────────────────────────────────────────
 
-function ChoiceScreen({ topJob, topJobPct, preSelectedJob, onDirectSlack, onDay1, onClose }: {
+function ChoiceScreen({ topJob, topJobPct, preSelectedJob, onDay1, onClose }: {
   topJob: JobType | null
   topJobPct: number
   preSelectedJob: JobType | null
-  onDirectSlack: () => void
   onDay1: () => void
   onClose: () => void
 }) {
@@ -115,20 +101,11 @@ function ChoiceScreen({ topJob, topJobPct, preSelectedJob, onDirectSlack, onDay1
           </div>
         )}
 
-        <p className="text-sm text-slate-500 text-center mb-4">다음 단계를 선택해주세요</p>
-
-        <div className="space-y-3">
-          <button onClick={onDirectSlack}
-            className="w-full bg-slate-900 text-white rounded-2xl p-4 text-left hover:bg-slate-800 transition-colors active:scale-[0.98]">
-            <div className="font-semibold text-base mb-0.5">💬 이대로 면담하러 가기</div>
-            <div className="text-xs text-slate-400">슬랙 초안을 바로 복사해서 튜터에게 보내기</div>
-          </button>
-          <button onClick={onDay1}
-            className="w-full border-2 border-slate-200 text-slate-700 rounded-2xl p-4 text-left hover:border-slate-300 hover:bg-slate-50 transition-colors active:scale-[0.98]">
-            <div className="font-semibold text-base mb-0.5">📝 나의 경험 정리하고 면담하기</div>
-            <div className="text-xs text-slate-500">DAY 1 경험 정리 후 더 풍부한 면담 가능</div>
-          </button>
-        </div>
+        <button onClick={onDay1}
+          className="w-full bg-slate-900 text-white rounded-2xl p-4 text-left hover:bg-slate-800 transition-colors active:scale-[0.98]">
+          <div className="font-semibold text-base mb-0.5">📝 나의 경험 정리하러 가기</div>
+          <div className="text-xs text-slate-400">DAY 1 경험 정리 작성하기</div>
+        </button>
       </div>
     </div>
   )
@@ -239,7 +216,7 @@ function Day1FormScreen({ topJob, sessionRound, initialDay1, onComplete, onClose
             ) : (
               <button onClick={handleSave} disabled={isPending}
                 className="flex-1 bg-slate-900 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-50">
-                {isPending ? '저장 중...' : '💾 저장하고 면담 요청하기'}
+                {isPending ? '저장 중...' : '💾 저장 완료'}
               </button>
             )}
           </div>
@@ -338,82 +315,3 @@ function FindTab({ data, set }: { data: Day1Data; set: SetFn }) {
   )
 }
 
-// ── 1차 면담 슬랙 초안 화면 ──────────────────────────────────────
-
-function SlackScreen1({ studentName, topJob, topJobPct, fromDay1, onClose }: {
-  studentName: string
-  topJob: JobType | null
-  topJobPct: number
-  fromDay1: boolean
-  onClose: () => void
-}) {
-  const router = useRouter()
-  const jobName = topJob ? JOB_LABELS_FLAT[topJob] : '마케터'
-  const color = topJob ? JOB_COLORS[topJob] : '#64748b'
-  const [copied, setCopied] = useState(false)
-
-  const draft = fromDay1
-    ? `OO튜터님 안녕하세요, ${studentName}입니다 :)
-
-진로 체크리스트와 DAY 1 경험 정리를 완성했어요. 결과를 보니 **${jobName}** 적합도가 가장 높게 나왔는데요 (${topJobPct}%),
-
-1차 면담을 요청드리고 싶습니다. [지금 / __시에] 잠깐 시간 괜찮으실까요? 10~15분 정도 여쭤보고 싶은 게 있어요 :)`
-    : `OO튜터님 안녕하세요, ${studentName}입니다 :)
-
-진로 체크리스트를 완성했어요. 결과를 보니 **${jobName}** 적합도가 가장 높게 나왔는데요 (${topJobPct}%),
-
-면담을 요청드리고 싶습니다. [지금 / __시에] 잠깐 시간 괜찮으실까요? 10~15분 정도 여쭤보고 싶은 게 있어요 :)`
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(draft)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2500)
-  }
-
-  const handleDone = () => {
-    if (fromDay1) router.refresh()
-    onClose()
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50" onClick={handleDone} />
-      <div className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl">
-        <div className="text-center mb-4">
-          <div className="text-3xl mb-2">🎉</div>
-          <h2 className="text-lg font-bold text-slate-900 mb-0.5">
-            {fromDay1 ? 'DAY 1 완료!' : '체크리스트 완료!'}
-          </h2>
-          {topJob && (
-            <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-              style={{ backgroundColor: `${color}14` }}>
-              <span className="text-sm font-bold" style={{ color }}>{jobName}</span>
-              <span className="text-xs font-medium" style={{ color }}>{topJobPct}%</span>
-            </div>
-          )}
-        </div>
-
-        <p className="text-xs font-semibold text-slate-700 mb-1">
-          {fromDay1 ? '💬 1차 면담 슬랙 초안' : '💬 면담 슬랙 초안'}
-        </p>
-        <p className="text-xs text-slate-400 mb-3">「OO」와 「[지금/__시에]」 부분을 수정한 후 복사하세요</p>
-
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4">
-          <pre className="text-sm text-slate-700 whitespace-pre-wrap font-sans leading-relaxed">{draft}</pre>
-        </div>
-
-        <button onClick={handleCopy}
-          className={`w-full font-semibold py-3 rounded-xl text-sm transition-all mb-2 ${
-            copied ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'
-          }`}>
-          {copied ? '✓ 복사됐어요!' : '📋 슬랙 초안 복사하기'}
-        </button>
-
-        <button onClick={handleDone}
-          className="w-full py-2.5 text-sm text-slate-400 hover:text-slate-600 transition-colors">
-          완료 (면담 대기 화면으로)
-        </button>
-      </div>
-    </div>
-  )
-}
