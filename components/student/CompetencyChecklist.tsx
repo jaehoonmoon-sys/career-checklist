@@ -250,8 +250,14 @@ export default function CompetencyChecklist({ initialAnswers, initialDay1, sessi
           디지털 마케터 부트캠프
         </span>
         <h1 className="text-2xl font-bold text-slate-900 mb-1.5">나는 어떤 마케터일까? 🎯</h1>
-        <p className="text-sm text-slate-500 mb-0.5">경험이 없어도 괜찮습니다. 관심·성향·재미를 기준으로 솔직하게 체크해주세요.</p>
-        <p className="text-sm text-slate-500 mb-4">체크할수록 나의 직무 적합도가 레이더 차트로 나타납니다.</p>
+        <p className="text-sm text-slate-500 mb-3">관심·성향·재미를 기준으로 솔직하게 체크하면, 직무 적합도가 레이더 차트로 나타납니다.</p>
+        <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 mb-4 text-left">
+          <p className="text-xs font-semibold text-amber-700 mb-1">✅ 이 체크리스트는 가볍게 참고하는 용도예요</p>
+          <p className="text-xs text-amber-700 leading-relaxed">
+            정답도, 정해진 직무도 없습니다. 결과에 너무 의미를 두지 않아도 돼요.<br />
+            체크리스트가 끝나면 <strong>나의 경험을 직접 정리하면서 취업 준비</strong>를 시작하게 됩니다.
+          </p>
+        </div>
         <div className="flex flex-wrap gap-2 justify-center">
           {ANSWER_OPTIONS.map(opt => (
             <div key={opt.key}

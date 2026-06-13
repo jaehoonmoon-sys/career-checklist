@@ -157,13 +157,16 @@ export function Day1FormScreen({ topJob, sessionRound, initialDay1, onComplete, 
 
           {/* 시작 전 읽기 */}
           <D1Callout color="blue" icon="💡">
-            <p className="font-semibold mb-1">시작 전 읽기 <span className="font-normal text-xs">(5분)</span></p>
-            <p className="leading-relaxed">오늘은 잘 보이지 않던 나의 경험을 꺼내는 날입니다.<br />
-            &quot;마케팅 경험이 없는데...&quot;라고 생각할 수 있지만, 마케팅은 생활에 녹아있습니다.<br />
-            올리브영 알바에서 고객에게 제품을 추천했다면 → 세일즈와 고객 이해입니다.<br />
-            인스타에 올린 사진 한 장도, 친구에게 맛집 추천도 → 모두 커뮤니케이션입니다.<br />
-            <strong>일단 다 꺼내놓는 게 오늘의 목표입니다. 선별은 나중에 합니다.</strong>
-            {topJob && <span className="ml-1">체크리스트 결과 <strong>{JOB_LABELS_FLAT[topJob]}</strong> 적합도가 가장 높았어요.</span>}
+            <p className="font-semibold mb-1.5">여기서부터가 진짜 취업 준비예요 <span className="font-normal text-xs">— 시작 전 읽기 (5분)</span></p>
+            <p className="leading-relaxed mb-2">
+              방금 한 체크리스트는 가볍게 재미로 해보는 직무 탐색이었어요.{topJob && <span> 결과로 <strong>{JOB_LABELS_FLAT[topJob]}</strong>이 나왔지만, 이건 단순 참고예요.</span>}<br />
+              <strong>진짜 취업 준비는 나의 경험을 꺼내고 정리하는 것에서 시작합니다.</strong>
+            </p>
+            <p className="leading-relaxed">
+              &quot;마케팅 경험이 없는데...&quot;라고 생각할 수 있지만, 마케팅은 생활에 녹아있습니다.<br />
+              올리브영 알바에서 고객에게 제품을 추천했다면 → 세일즈와 고객 이해입니다.<br />
+              인스타에 올린 사진 한 장도, 친구에게 맛집 추천도 → 모두 커뮤니케이션입니다.<br />
+              <strong>일단 다 꺼내놓는 게 오늘의 목표입니다. 선별은 나중에 합니다.</strong>
             </p>
           </D1Callout>
 
