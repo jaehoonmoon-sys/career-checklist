@@ -194,52 +194,36 @@ export function Day1FormScreen({ topJob, sessionRound, initialDay1, onComplete, 
             <D1Textarea value={data.personal} onChange={set('personal')} />
           </D1Field>
 
-          {/* 파트 2 — 캠프 프로젝트 테이블 */}
+          {/* 파트 2 — 캠프 프로젝트 */}
           <D1SectionHeader title="파트 2 | 캠프에서 내가 한 것들" time="15분" />
-          <p className="text-sm text-slate-600 -mt-4">각 프로젝트에서 내가 맡은 역할과 실제로 만든 것을 적어주세요.</p>
 
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="bg-slate-50">
-                  <th className="border-b border-r border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 text-left w-32">프로젝트</th>
-                  <th className="border-b border-r border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 text-left">내가 맡은 역할</th>
-                  <th className="border-b border-r border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 text-left">실제로 만든 것</th>
-                  <th className="border-b border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 text-left">기억에 남는 것</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="border-b border-r border-slate-200 px-3 py-2 text-xs text-slate-500 align-top bg-slate-50">
-                    기초 프로젝트<br /><span className="text-slate-400">(AI 광고 콘텐츠)</span>
-                  </td>
-                  <td className="border-b border-r border-slate-200 p-1">
-                    <D1CellArea value={data.camp_basic_role} onChange={set('camp_basic_role')} />
-                  </td>
-                  <td className="border-b border-r border-slate-200 p-1">
-                    <D1CellArea value={data.camp_basic_made} onChange={set('camp_basic_made')} />
-                  </td>
-                  <td className="border-b border-slate-200 p-1">
-                    <D1CellArea value={data.camp_basic_memory} onChange={set('camp_basic_memory')} />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="border-r border-slate-200 px-3 py-2 text-xs text-slate-500 align-top bg-slate-50">
-                    심화 프로젝트<br /><span className="text-slate-400">(광고 콘텐츠 제작)</span>
-                  </td>
-                  <td className="border-r border-slate-200 p-1">
-                    <D1CellArea value={data.camp_adv_role} onChange={set('camp_adv_role')} />
-                  </td>
-                  <td className="border-r border-slate-200 p-1">
-                    <D1CellArea value={data.camp_adv_made} onChange={set('camp_adv_made')} />
-                  </td>
-                  <td className="p-1">
-                    <D1CellArea value={data.camp_adv_memory} onChange={set('camp_adv_memory')} />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <p className="text-xs font-semibold text-slate-500 -mt-4">🏕️ 기초 프로젝트 (AI 광고 콘텐츠)</p>
+
+          <D1Field label="2-1. 내가 맡은 역할" desc="팀에서 어떤 역할을 담당했나요?">
+            <D1Textarea value={data.camp_basic_role} onChange={set('camp_basic_role')} />
+          </D1Field>
+
+          <D1Field label="2-2. 실제로 만든 것" desc="결과물로 무엇을 만들었나요?">
+            <D1Textarea value={data.camp_basic_made} onChange={set('camp_basic_made')} />
+          </D1Field>
+
+          <D1Field label="2-3. 기억에 남는 것" desc="이 프로젝트에서 가장 기억에 남는 순간이나 배운 점">
+            <D1Textarea value={data.camp_basic_memory} onChange={set('camp_basic_memory')} />
+          </D1Field>
+
+          <p className="text-xs font-semibold text-slate-500">🏕️ 심화 프로젝트 (광고 콘텐츠 제작)</p>
+
+          <D1Field label="2-4. 내가 맡은 역할" desc="팀에서 어떤 역할을 담당했나요?">
+            <D1Textarea value={data.camp_adv_role} onChange={set('camp_adv_role')} />
+          </D1Field>
+
+          <D1Field label="2-5. 실제로 만든 것" desc="결과물로 무엇을 만들었나요?">
+            <D1Textarea value={data.camp_adv_made} onChange={set('camp_adv_made')} />
+          </D1Field>
+
+          <D1Field label="2-6. 기억에 남는 것" desc="이 프로젝트에서 가장 기억에 남는 순간이나 배운 점">
+            <D1Textarea value={data.camp_adv_memory} onChange={set('camp_adv_memory')} />
+          </D1Field>
 
           {/* 파트 3 — 에너지 체크 */}
           <D1SectionHeader title="파트 3 | 에너지 체크" time="15분" />
@@ -354,18 +338,4 @@ function D1Textarea({ value, onChange, placeholder, rows = 4 }: {
   )
 }
 
-function D1CellArea({ value, onChange }: {
-  value: string
-  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
-}) {
-  return (
-    <textarea
-      value={value}
-      onChange={onChange}
-      rows={3}
-      placeholder="여기에 작성하세요"
-      className="w-full bg-transparent text-sm text-slate-700 placeholder:text-slate-300 px-2 py-1.5 focus:outline-none resize-none min-h-[60px]"
-    />
-  )
-}
 
