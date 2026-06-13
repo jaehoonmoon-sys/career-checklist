@@ -18,45 +18,6 @@ const JOB_COLORS: Record<JobType, string> = {
   growth: '#10b981', crm: '#f97316', ae: '#6366f1',
 }
 
-// 진행 단계 표시 (체크리스트~완료, 6단계)
-const PROGRESS_STEPS = [
-  '체크리스트',
-  'DAY 1',
-  '1차 면담',
-  'DAY 2+3',
-  '2차 면담',
-  '최종 정리',
-]
-
-function StageProgress({ stage }: { stage: number }) {
-  // stage 0~5 → steps 0~5 완료 기준
-  // stage 1 = DAY1 완료, stage 2 = 1차 면담 완료, ...
-  const completedUpTo = stage // 0=체크리스트완료, 1=DAY1완료, 2=1차면담완료, 3=DAY23완료, 4=2차면담완료, 5=최종완료
-  return (
-    <div className="flex items-center gap-0.5">
-      {PROGRESS_STEPS.map((label, i) => {
-        const done = i < completedUpTo
-        const active = i === completedUpTo
-        return (
-          <div key={i} className="flex items-center">
-            <div className={`flex items-center justify-center rounded-full text-[9px] font-bold
-              ${done ? 'bg-emerald-500 text-white w-4 h-4' :
-                active ? 'bg-slate-900 text-white w-4 h-4' :
-                'bg-slate-200 text-slate-400 w-4 h-4'}`}>
-              {done ? '✓' : i + 1}
-            </div>
-            {i < PROGRESS_STEPS.length - 1 && (
-              <div className={`w-3 h-0.5 ${i < completedUpTo ? 'bg-emerald-400' : 'bg-slate-200'}`} />
-            )}
-          </div>
-        )
-      })}
-      <span className="ml-1.5 text-[10px] text-slate-400 hidden sm:inline">
-        {PROGRESS_STEPS[Math.min(completedUpTo, PROGRESS_STEPS.length - 1)]}
-      </span>
-    </div>
-  )
-}
 
 const JOB_ORDER: JobType[] = ['performance', 'content', 'brand', 'growth', 'crm', 'ae']
 
@@ -124,7 +85,6 @@ export default function CareerJourneyView({
         <nav className="bg-white border-b border-slate-100 sticky top-0 z-10">
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
             <span className="text-sm text-slate-500">{studentName}님</span>
-            <StageProgress stage={1} />
             <button onClick={() => setShowRollback(true)}
               className="text-xs text-slate-400 hover:text-amber-600 transition-colors">
               ↩ 초기화
@@ -204,9 +164,6 @@ export default function CareerJourneyView({
             </div>
           </div>
 
-          <p className="text-center text-xs text-slate-300 pt-2">
-            이후 과정은 곧 열릴 예정이에요
-          </p>
         </div>
 
         {/* DAY1 수정 오버레이 */}
@@ -391,7 +348,6 @@ function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutor
       <nav className="bg-white border-b border-slate-100 sticky top-0 z-10 shrink-0">
         <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between">
           <span className="text-sm text-slate-500">{studentName}님</span>
-          <StageProgress stage={2} />
           {onRollbackRequest ? (
             <button onClick={onRollbackRequest} className="text-xs text-slate-400 hover:text-amber-600 transition-colors">↩ 수정하기</button>
           ) : <span />}
@@ -646,7 +602,7 @@ function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutor
 }
 
 // ══════════════════════════════════════════════════════════════════
-// 2차 면담 슬랙 초안
+// DAY2+3 완료 슬랙 초안
 // ══════════════════════════════════════════════════════════════════
 
 function SlackScreen2({ studentName, topJob, onClose }: {
@@ -661,7 +617,7 @@ function SlackScreen2({ studentName, topJob, onClose }: {
 
 DAY 2+3 경험 정리를 완성했어요. 목표 직무와 취업 방향을 구체화해봤는데요,
 
-2차 면담을 통해 방향을 확인하고 피드백을 받고 싶습니다. [지금 / __시에] 잠깐 시간 괜찮으실까요? 10~15분 정도 부탁드려요 :)
+피드백을 받고 싶습니다. [지금 / __시에] 잠깐 시간 괜찮으실까요? 10~15분 정도 부탁드려요 :)
 
 * ${jobName} 방향으로 정리했어요`
 
@@ -675,7 +631,7 @@ DAY 2+3 경험 정리를 완성했어요. 목표 직무와 취업 방향을 구�
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl">
-        <h2 className="text-lg font-bold text-slate-900 mb-0.5">💬 2차 면담 슬랙 초안</h2>
+        <h2 className="text-lg font-bold text-slate-900 mb-0.5">💬 슬랙 초안</h2>
         <p className="text-xs text-slate-400 mb-4">「OO」와 「[지금/__시에]」 부분을 수정한 후 복사하세요</p>
 
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4">
@@ -691,7 +647,7 @@ DAY 2+3 경험 정리를 완성했어요. 목표 직무와 취업 방향을 구�
 
         <button onClick={onClose}
           className="w-full py-2.5 text-sm text-slate-400 hover:text-slate-600 transition-colors">
-          완료 (면담 대기 화면으로)
+          완료
         </button>
       </div>
     </div>
@@ -748,7 +704,6 @@ function Day5FormScreen({ studentName, sessionRound, initialData, tutorComment, 
       <nav className="bg-white border-b border-slate-100 sticky top-0 z-10 shrink-0">
         <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between">
           <span className="text-sm text-slate-500">{studentName}님</span>
-          <StageProgress stage={4} />
           {onRollbackRequest ? (
             <button onClick={onRollbackRequest} className="text-xs text-slate-400 hover:text-amber-600 transition-colors">
               ↩ 수정하기
@@ -865,8 +820,8 @@ function Day5FormScreen({ studentName, sessionRound, initialData, tutorComment, 
 
 const ROLLBACK_OPTIONS: { target: RollbackTarget; label: string; desc: string; minStage: number }[] = [
   { target: 'day5',      label: 'DAY5 다시 작성',          desc: 'DAY5 최종 정리 내용이 삭제됩니다.',                                          minStage: 5 },
-  { target: 'day23',     label: 'DAY2+3부터 다시',          desc: 'DAY2+3, DAY5 및 2차 면담 기록이 삭제됩니다.',                               minStage: 3 },
-  { target: 'day1',      label: 'DAY1부터 다시',            desc: 'DAY1 경험 정리, DAY2+3, DAY5, 모든 면담 기록이 삭제됩니다. 체크리스트 답변은 유지됩니다.', minStage: 1 },
+  { target: 'day23',     label: 'DAY2+3부터 다시',          desc: 'DAY2+3, DAY5 작성 내용이 삭제됩니다.',                         minStage: 3 },
+  { target: 'day1',      label: 'DAY1부터 다시',            desc: 'DAY1 경험 정리, DAY2+3, DAY5 작성 내용이 삭제됩니다. 체크리스트 답변은 유지됩니다.', minStage: 1 },
   { target: 'checklist', label: '체크리스트부터 전부 다시', desc: '체크리스트를 포함한 모든 내용이 삭제됩니다.',                                minStage: 0 },
 ]
 

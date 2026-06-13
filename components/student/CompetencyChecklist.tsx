@@ -233,7 +233,7 @@ export default function CompetencyChecklist({ initialAnswers, initialDay1, sessi
       <nav className="bg-white border-b border-slate-100 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between">
           <a href="/" className="text-sm text-slate-400 hover:text-slate-600 transition-colors">← 메인</a>
-          <span className="text-xs text-slate-400">{studentName}님 · {sessionRound}차 면담 준비</span>
+          <span className="text-xs text-slate-400">{studentName}님</span>
           <div className="flex items-center gap-1.5">
             <div className="h-1.5 w-20 bg-slate-100 rounded-full overflow-hidden">
               <div className="h-full rounded-full transition-all duration-300"
