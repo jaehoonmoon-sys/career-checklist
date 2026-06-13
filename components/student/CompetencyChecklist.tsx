@@ -13,6 +13,7 @@ import {
 import { saveCompetencyAnswers } from '@/app/actions/checklist'
 import PostSaveFlow from './PostSaveFlow'
 import { type Day1Data } from '@/lib/types'
+import { type FormConfig } from '@/lib/form-config'
 
 const MAX_SCORES = calcMaxScores()
 const JOB_ORDER: JobType[] = ['performance', 'content', 'brand', 'growth', 'crm', 'ae']
@@ -66,10 +67,11 @@ type Props = {
   initialDay1: Day1Data
   sessionRound: number
   studentName: string
+  formConfig?: FormConfig
   onAfterSave?: () => void  // 제공 시 저장 후 PostSaveFlow 대신 호출
 }
 
-export default function CompetencyChecklist({ initialAnswers, initialDay1, sessionRound, studentName, onAfterSave }: Props) {
+export default function CompetencyChecklist({ initialAnswers, initialDay1, sessionRound, studentName, formConfig, onAfterSave }: Props) {
   const [answers, setAnswers] = useState<Record<string, number>>(initialAnswers)
   const [saved, setSaved] = useState(
     Object.keys(initialAnswers).filter(k => !k.startsWith('_')).length > 0
@@ -452,6 +454,7 @@ export default function CompetencyChecklist({ initialAnswers, initialDay1, sessi
           sessionRound={sessionRound}
           initialDay1={initialDay1}
           preSelectedJob={preSelectedJob}
+          formConfig={formConfig}
           onClose={() => setShowFlow(false)}
         />
       )}

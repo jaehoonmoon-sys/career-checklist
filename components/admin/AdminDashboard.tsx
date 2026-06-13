@@ -3,7 +3,9 @@
 import { useState, useMemo } from 'react'
 import { JOB_LABELS_FLAT, type JobType } from '@/lib/survey-questions'
 import type { StudentRow } from '@/app/actions/admin'
+import type { FormConfig } from '@/lib/form-config'
 import StudentDetailModal from './StudentDetailModal'
+import FormConfigTab from './FormConfigTab'
 
 type FilterType = 'all' | 'incomplete' | JobType
 
@@ -24,7 +26,14 @@ const SHORT_LABELS: Record<JobType, string> = {
   growth: '그로스', crm: 'CRM', ae: 'AE',
 }
 
-export default function AdminDashboard({ students }: { students: StudentRow[] }) {
+export default function AdminDashboard({
+  students,
+  formConfig,
+}: {
+  students: StudentRow[]
+  formConfig: FormConfig
+}) {
+  const [mainTab, setMainTab] = useState<'students' | 'form'>('students')
   const [filter, setFilter] = useState<FilterType>('all')
   const [selectedStudent, setSelectedStudent] = useState<StudentRow | null>(null)
   const [search, setSearch] = useState('')
@@ -75,11 +84,40 @@ export default function AdminDashboard({ students }: { students: StudentRow[] })
       <nav className="bg-white border-b border-slate-100 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <a href="/" className="text-sm text-slate-400 hover:text-slate-600 transition-colors">← 로그아웃</a>
-          <h1 className="text-base font-bold text-slate-900">전체 수강생 현황</h1>
+          <h1 className="text-base font-bold text-slate-900">관리자</h1>
           <span className="text-xs text-slate-400">관리자 모드</span>
+        </div>
+        {/* 상단 탭 */}
+        <div className="max-w-7xl mx-auto px-4 pb-0 flex gap-1 border-t border-slate-50">
+          {([
+            { key: 'students', label: '수강생 현황' },
+            { key: 'form',     label: '폼 설정' },
+          ] as const).map(tab => (
+            <button key={tab.key} onClick={() => setMainTab(tab.key)}
+              className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
+                mainTab === tab.key
+                  ? 'border-indigo-600 text-indigo-700'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}>
+              {tab.label}
+            </button>
+          ))}
         </div>
       </nav>
 
+      {/* 폼 설정 탭 */}
+      {mainTab === 'form' && (
+        <div className="max-w-3xl mx-auto px-4 py-5">
+          <div className="mb-4">
+            <h2 className="text-base font-bold text-slate-900 mb-0.5">폼 설정</h2>
+            <p className="text-xs text-slate-500">수강생에게 표시되는 질문과 안내 문구를 수정합니다. 저장하면 즉시 모든 수강생에게 반영됩니다.</p>
+          </div>
+          <FormConfigTab initialConfig={formConfig} />
+        </div>
+      )}
+
+      {/* 수강생 현황 탭 */}
+      {mainTab === 'students' && (
       <div className="max-w-7xl mx-auto px-4 py-5 space-y-4">
 
         {/* 통계 요약 */}
@@ -178,6 +216,7 @@ export default function AdminDashboard({ students }: { students: StudentRow[] })
           </div>
         )}
       </div>
+      )}
 
       {/* 상세 모달 */}
       {selectedStudent && (

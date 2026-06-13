@@ -7,9 +7,9 @@ import { saveDay23, saveDay5, rollbackStage, type RollbackTarget } from '@/app/a
 import {
   type Day1Data, type Day23Data, type Day5Data,
   EMPTY_DAY23, EMPTY_DAY5,
-  CURRICULUM_AREAS, WORK_STYLE_ITEMS, WORK_ENV_TYPE_ITEMS, WORK_ENV_SIZE_ITEMS,
   type CurrRow, type WsRow, type WenvRow,
 } from '@/lib/types'
+import { type FormConfig, DEFAULT_FORM_CONFIG } from '@/lib/form-config'
 import CompetencyChecklist from './CompetencyChecklist'
 import { Day1FormScreen, NextStepsChecklist } from './PostSaveFlow'
 
@@ -50,13 +50,14 @@ type Props = {
   day5Data: Day5Data
   tutorComment1: string | null
   tutorComment2: string | null
+  formConfig?: FormConfig
 }
 
 type EditMode = 'none' | 'checklist' | 'day1'
 
 export default function CareerJourneyView({
   stage, studentName, sessionRound, topJob, topJobPct, jobPcts, answers,
-  day1Data, day23Data, day5Data, tutorComment1, tutorComment2,
+  day1Data, day23Data, day5Data, tutorComment1, tutorComment2, formConfig,
 }: Props) {
   const router = useRouter()
   const [currentStage] = useState(stage)
@@ -71,6 +72,7 @@ export default function CareerJourneyView({
         initialDay1={day1Data}
         sessionRound={sessionRound}
         studentName={studentName}
+        formConfig={formConfig}
         onAfterSave={() => { setEditMode('none'); router.refresh() }}
       />
     )
@@ -191,6 +193,7 @@ export default function CareerJourneyView({
             topJob={topJob}
             sessionRound={sessionRound}
             initialDay1={day1Data}
+            formConfig={formConfig}
             onComplete={() => { setEditMode('none'); router.refresh() }}
             onClose={() => setEditMode('none')}
           />
@@ -317,15 +320,17 @@ function Area({ value, onChange, placeholder, rows = 4 }: {
   )
 }
 
-function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutorComment, onComplete, onRollbackRequest }: {
+function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutorComment, formConfig, onComplete, onRollbackRequest }: {
   studentName: string
   sessionRound: number
   topJob: JobType | null
   initialData: Day23Data
   tutorComment: string | null
+  formConfig?: FormConfig
   onComplete: () => void
   onRollbackRequest?: () => void
 }) {
+  const cfg = formConfig?.day23 ?? DEFAULT_FORM_CONFIG.day23
   const [data, setData] = useState<Day23Data>(initialData)
   const [isPending, startTransition] = useTransition()
   const [saveMsg, setSaveMsg] = useState('')
@@ -413,7 +418,7 @@ function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutor
                   </tr>
                 </thead>
                 <tbody>
-                  {CURRICULUM_AREAS.map((area, i) => (
+                  {cfg.curriculum_areas.map((area, i) => (
                     <tr key={area} className="border-b border-slate-100 last:border-0">
                       <td className="px-2 py-2 text-slate-700 leading-snug">{area}</td>
                       <td className="px-2 py-2">
@@ -453,7 +458,7 @@ function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutor
                   </tr>
                 </thead>
                 <tbody>
-                  {WORK_STYLE_ITEMS.map((item, i) => (
+                  {cfg.work_style_items.map((item, i) => (
                     <tr key={i} className="border-b border-slate-100 last:border-0">
                       <td className="px-2 py-2.5 text-slate-700 text-right">{item.a}</td>
                       <td className="px-2 py-2.5 text-center">
@@ -478,14 +483,14 @@ function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutor
 
           {/* 파트 3: 강점 & 한 문장 */}
           <D23Card title="파트 3 | 강점 & 한 문장 정리" time="10분">
-            <D23Field label="💪 나의 강점 3가지" hint="「나는 __을 잘한다, 왜냐하면 __한 경험이 있기 때문이다」 형식으로 써보세요.">
-              <D23Callout>예: 「나는 감정을 건드리는 글을 잘 쓴다, 왜냐하면 콘텐츠 프로젝트에서 내 카피를 팀원들이 가장 많이 선택했기 때문이다」</D23Callout>
+            <D23Field label={cfg.strengths.label} hint={cfg.strengths.hint}>
+              {cfg.strengths.callout && <D23Callout>{cfg.strengths.callout}</D23Callout>}
               <D23Textarea value={data.strengths} onChange={setStr('strengths')} rows={6}
-                placeholder={`강점 1: 나는 __ 을 잘한다, 왜냐하면...\n\n강점 2: 나는 __ 을 잘한다, 왜냐하면...\n\n강점 3: 나는 __ 을 잘한다, 왜냐하면...`} />
+                placeholder={cfg.strengths.placeholder} />
             </D23Field>
-            <D23Field label="✍️ 한 문장 완성" hint="아직 완벽하지 않아도 됩니다. 지금 이 순간의 나를 써보세요.">
+            <D23Field label={cfg.marketer_sentence.label} hint={cfg.marketer_sentence.hint}>
               <D23Textarea value={data.marketer_sentence} onChange={setStr('marketer_sentence')} rows={2}
-                placeholder="나는 ___한 마케터가 되고 싶다. 왜냐하면 나는 ___할 때 가장 살아있다고 느끼기 때문이다." />
+                placeholder={cfg.marketer_sentence.placeholder} />
             </D23Field>
           </D23Card>
 
@@ -494,25 +499,25 @@ function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutor
 
           {/* 파트 1: 목표 직무 */}
           <D23Card title="파트 1 | 목표 직무 방향">
-            <D23Field label="🥇 1순위 목표 직무 & 이유" hint="퍼포먼스 / 콘텐츠 / 브랜드 / 그로스 / CRM / AE 중 하나. DAY 2 강점과 연결해서 이유를 써주세요.">
+            <D23Field label={cfg.target_job_1.label} hint={cfg.target_job_1.hint}>
               <D23Textarea value={data.target_job_1} onChange={setStr('target_job_1')} rows={3}
-                placeholder={`직무명: ___\n이유: 나는 ___ 때문에 이 직무가 맞다고 생각합니다`} />
+                placeholder={cfg.target_job_1.placeholder} />
             </D23Field>
-            <D23Field label="🥈 2순위 목표 직무 & 이유 (선택)">
+            <D23Field label={cfg.target_job_2.label}>
               <D23Textarea value={data.target_job_2} onChange={setStr('target_job_2')} rows={2}
-                placeholder="직무명 + 한 줄 이유 (없으면 비워도 됩니다)" />
+                placeholder={cfg.target_job_2.placeholder} />
             </D23Field>
           </D23Card>
 
           {/* 파트 2: 관심 산업 */}
           <D23Card title="파트 2 | 관심 산업">
-            <D23Field label="🏭 관심 산업 Top 3" hint="IT/SaaS · 이커머스 · 뷰티 · 식음료 · 패션 · 교육 · 헬스케어 · 게임 · 콘텐츠 · 금융 등">
+            <D23Field label={cfg.industries.label} hint={cfg.industries.hint}>
               <D23Textarea value={data.industries} onChange={setStr('industries')} rows={4}
-                placeholder={`1순위: (산업명) / 이유:\n2순위: (산업명) / 이유:\n3순위: (산업명) / 이유:`} />
+                placeholder={cfg.industries.placeholder} />
             </D23Field>
-            <D23Field label="🔗 DAY 1 경험과 연결하기" hint="내 경험 중 관심 산업과 연결될 수 있는 것이 있나요?">
+            <D23Field label={cfg.industry_connection.label} hint={cfg.industry_connection.hint}>
               <D23Textarea value={data.industry_connection} onChange={setStr('industry_connection')} rows={3}
-                placeholder="예: 이커머스에 관심 있는데, DAY 1에서 썼던 __한 경험이 연결될 것 같습니다." />
+                placeholder={cfg.industry_connection.placeholder} />
             </D23Field>
           </D23Card>
 
@@ -533,7 +538,7 @@ function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutor
                     </tr>
                   </thead>
                   <tbody>
-                    {WORK_ENV_TYPE_ITEMS.map((item, i) => (
+                    {cfg.work_env_type_items.map((item, i) => (
                       <tr key={item.label} className="border-b border-slate-100 last:border-0">
                         <td className="px-3 py-2.5 font-medium text-slate-700">{item.label}</td>
                         <td className="px-3 py-2.5 text-slate-500 text-[11px] leading-snug">{item.desc}</td>
@@ -565,7 +570,7 @@ function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutor
                     </tr>
                   </thead>
                   <tbody>
-                    {WORK_ENV_SIZE_ITEMS.map((item, i) => (
+                    {cfg.work_env_size_items.map((item, i) => (
                       <tr key={item.label} className="border-b border-slate-100 last:border-0">
                         <td className="px-3 py-2.5 font-medium text-slate-700">{item.label}</td>
                         <td className="px-3 py-2.5 text-slate-500 text-[11px] leading-snug">{item.desc}</td>
@@ -587,20 +592,20 @@ function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutor
 
           {/* 파트 4: 목표 JD */}
           <D23Card title="파트 4 | 목표 JD">
-            <D23Field label="📄 목표 JD 링크" hint="원티드·사람인에서 「이런 곳에서 일하고 싶다」는 느낌의 공고 하나를 찾아보세요.">
+            <D23Field label={cfg.target_jd_url.label} hint={cfg.target_jd_url.hint}>
               <input value={data.target_jd_url} onChange={setStr('target_jd_url')}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-200 mb-2"
                 placeholder="https://..." />
               <D23Textarea value={data.target_jd_note} onChange={setStr('target_jd_note')} rows={4}
-                placeholder={`이 JD를 고른 이유:\n할 수 있을 것 같은 부분:\n아직 부족한 부분:`} />
+                placeholder={cfg.target_jd_note.placeholder} />
             </D23Field>
           </D23Card>
 
           {/* 파트 5: 취업 나침반 초안 */}
           <D23Card title="파트 5 | 취업 나침반 초안">
-            <D23Field label="🧭 지금까지 내용을 압축해보세요" hint="아직 완벽하지 않아도 됩니다. 초안이에요.">
+            <D23Field label={cfg.compass_draft.label} hint={cfg.compass_draft.hint}>
               <D23Textarea value={data.compass_draft} onChange={setStr('compass_draft')} rows={5}
-                placeholder={`나는 (직무) 마케터로서\n(산업 / 회사 유형)에 지원하겠다.\n나의 강점은 (강점)이고,\n그 근거가 되는 경험은 (경험)이다.`} />
+                placeholder={cfg.compass_draft.placeholder} />
             </D23Field>
           </D23Card>
 

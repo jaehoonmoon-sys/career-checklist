@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getStudentResponse } from '@/app/actions/checklist'
+import { getFormConfig } from '@/app/actions/admin'
 import CompetencyChecklist from '@/components/student/CompetencyChecklist'
 import CareerJourneyView from '@/components/student/CareerJourneyView'
 import { EMPTY_DAY1, EMPTY_DAY23, EMPTY_DAY5, type Day1Data, type Day23Data, type Day5Data, type CurrRow, type WsRow, type WenvRow } from '@/lib/types'
@@ -19,7 +20,10 @@ export default async function StudentPage() {
 
   const sessionRound = 1
 
-  const response = await getStudentResponse(sessionRound)
+  const [response, formConfig] = await Promise.all([
+    getStudentResponse(sessionRound),
+    getFormConfig(),
+  ])
   const initialAnswers: Record<string, number> =
     (response?.competency_answers as Record<string, number>) ?? {}
   const hasAnswers = Object.keys(initialAnswers).length > 0
@@ -64,6 +68,7 @@ export default async function StudentPage() {
         day5Data={day5Data}
         tutorComment1={resp?.tutor_comment_1 ?? null}
         tutorComment2={resp?.tutor_comment_2 ?? null}
+        formConfig={formConfig}
       />
     )
   }
@@ -80,6 +85,7 @@ export default async function StudentPage() {
       initialDay1={initialDay1}
       sessionRound={sessionRound}
       studentName={studentName ?? ''}
+      formConfig={formConfig}
     />
   )
 }

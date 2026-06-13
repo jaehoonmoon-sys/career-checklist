@@ -1,9 +1,10 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createAdminClient } from '@/lib/supabase'
+import { createAdminClient, supabase } from '@/lib/supabase'
 import { calcJobScores, calcMaxScores, type JobType } from '@/lib/survey-questions'
 import { type ExperienceData, type Day1Data, type Day23Data, type Day5Data } from '@/lib/types'
+import { getEffectiveConfig, type FormConfig } from '@/lib/form-config'
 
 const MAX_SCORES = calcMaxScores()
 const JOB_KEYS: JobType[] = ['performance', 'content', 'brand', 'growth', 'crm', 'ae']
@@ -111,6 +112,30 @@ export async function getAdminOverview(): Promise<StudentRow[]> {
       day5_data,
     }
   })
+}
+
+export async function getFormConfig(): Promise<FormConfig> {
+  const { data } = await supabase
+    .from('cc_form_config')
+    .select('config')
+    .eq('id', 1)
+    .single()
+
+  return getEffectiveConfig((data?.config as Record<string, unknown>) ?? {})
+}
+
+export async function saveFormConfig(config: FormConfig): Promise<{ success?: boolean; error?: string }> {
+  const adminClient = createAdminClient()
+
+  const { error } = await adminClient
+    .from('cc_form_config')
+    .upsert({ id: 1, config, updated_at: new Date().toISOString() }, { onConflict: 'id' })
+
+  if (error) return { error: '저장 중 오류가 발생했습니다.' }
+
+  revalidatePath('/admin')
+  revalidatePath('/student')
+  return { success: true }
 }
 
 export async function saveTutorComment(
