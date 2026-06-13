@@ -122,7 +122,7 @@ const DAY1_TABS = [
 type Day1Tab = typeof DAY1_TABS[number]['key']
 type SetFn = (key: keyof Day1Data) => (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => void
 
-function Day1FormScreen({ topJob, sessionRound, initialDay1, onComplete, onClose }: {
+export function Day1FormScreen({ topJob, sessionRound, initialDay1, onComplete, onClose }: {
   topJob: JobType | null
   sessionRound: number
   initialDay1: Day1Data

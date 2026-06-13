@@ -8,6 +8,8 @@ import {
   type Day1Data, type Day23Data, type Day5Data,
   EMPTY_DAY23, EMPTY_DAY5,
 } from '@/lib/types'
+import CompetencyChecklist from './CompetencyChecklist'
+import { Day1FormScreen } from './PostSaveFlow'
 
 const JOB_COLORS: Record<JobType, string> = {
   performance: '#3b82f6', content: '#8b5cf6', brand: '#ec4899',
@@ -54,12 +56,27 @@ function StageProgress({ stage }: { stage: number }) {
   )
 }
 
+const JOB_ORDER: JobType[] = ['performance', 'content', 'brand', 'growth', 'crm', 'ae']
+
+const DAY1_FIELDS: { key: keyof Day1Data; label: string }[] = [
+  { key: 'work',            label: '💼 일/알바/직장 경험' },
+  { key: 'school',          label: '🎓 학교/학습 경험' },
+  { key: 'personal',        label: '🌱 개인 활동' },
+  { key: 'camp_projects',   label: '🏕️ 캠프에서 내가 한 것들' },
+  { key: 'energy_flow',     label: '⚡ 몰입했던 순간' },
+  { key: 'good_at',         label: '✨ 잘한다고 느꼈던 순간' },
+  { key: 'dislike',         label: '😣 하기 싫었던 것' },
+  { key: 'today_discovery', label: '✅ 오늘의 발견' },
+]
+
 type Props = {
   stage: number
   studentName: string
   sessionRound: number
   topJob: JobType | null
   topJobPct: number
+  jobPcts: Record<JobType, number>
+  answers: Record<string, number>
   day1Data: Day1Data
   day23Data: Day23Data
   day5Data: Day5Data
@@ -67,16 +84,34 @@ type Props = {
   tutorComment2: string | null
 }
 
+type EditMode = 'none' | 'checklist' | 'day1'
+
 export default function CareerJourneyView({
-  stage, studentName, sessionRound, topJob, topJobPct,
+  stage, studentName, sessionRound, topJob, topJobPct, jobPcts, answers,
   day1Data, day23Data, day5Data, tutorComment1, tutorComment2,
 }: Props) {
   const router = useRouter()
-  const [currentStage, setCurrentStage] = useState(stage)
+  const [currentStage] = useState(stage)
   const [showRollback, setShowRollback] = useState(false)
+  const [editMode, setEditMode] = useState<EditMode>('none')
 
-  // ─── Stage 1+: DAY1 완료, 이후 과정 준비 중 ─────────────────
+  // ─── 체크리스트 수정 모드: 전체 화면 교체 ────────────────────
+  if (currentStage >= 1 && editMode === 'checklist') {
+    return (
+      <CompetencyChecklist
+        initialAnswers={answers}
+        initialDay1={day1Data}
+        sessionRound={sessionRound}
+        studentName={studentName}
+        onAfterSave={() => { setEditMode('none'); router.refresh() }}
+      />
+    )
+  }
+
+  // ─── Stage 1+: 리뷰 화면 ────────────────────────────────────
   if (currentStage >= 1) {
+    const topJobColor = topJob ? JOB_COLORS[topJob] : '#64748b'
+
     return (
       <div className="min-h-screen bg-slate-50">
         <nav className="bg-white border-b border-slate-100 sticky top-0 z-10">
@@ -85,32 +120,105 @@ export default function CareerJourneyView({
             <StageProgress stage={1} />
             <button onClick={() => setShowRollback(true)}
               className="text-xs text-slate-400 hover:text-amber-600 transition-colors">
-              ↩ 수정하기
+              ↩ 초기화
             </button>
           </div>
         </nav>
 
-        <div className="max-w-md mx-auto px-4 py-12">
-          <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 text-center">
-            <div className="text-5xl mb-4">✅</div>
-            <h2 className="text-xl font-bold text-slate-900 mb-2">DAY 1 완료!</h2>
-            <p className="text-sm text-slate-500 mb-6 leading-relaxed">
-              경험 정리가 완성됐어요.<br />이후 과정은 곧 열릴 예정이에요.
-            </p>
+        <div className="max-w-2xl mx-auto px-4 py-6 space-y-4 pb-16">
+
+          {/* 직무 적합도 결과 카드 */}
+          <div className="bg-white rounded-2xl border border-slate-100 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-bold text-slate-800">📊 직무 적합도 결과</p>
+              <button onClick={() => setEditMode('checklist')}
+                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium underline underline-offset-2">
+                수정하기
+              </button>
+            </div>
 
             {topJob && (
-              <div className="bg-slate-50 rounded-2xl p-4">
-                <p className="text-[11px] text-slate-400 mb-1">체크리스트 결과</p>
-                <p className="text-base font-bold" style={{ color: JOB_COLORS[topJob] }}>
-                  {JOB_LABELS_FLAT[topJob]} {topJobPct}%
-                </p>
+              <div className="flex items-center gap-2 rounded-xl px-4 py-2.5 mb-4"
+                style={{ backgroundColor: `${topJobColor}14` }}>
+                <span className="text-xs text-slate-500">1위</span>
+                <span className="text-sm font-bold" style={{ color: topJobColor }}>
+                  {JOB_LABELS_FLAT[topJob]}
+                </span>
+                <span className="text-sm font-semibold ml-auto" style={{ color: topJobColor }}>
+                  {topJobPct}%
+                </span>
               </div>
             )}
+
+            <div className="space-y-2.5">
+              {JOB_ORDER.map(job => (
+                <div key={job} className="flex items-center gap-3">
+                  <span className="text-xs text-slate-500 w-20 shrink-0 truncate">
+                    {JOB_LABELS_FLAT[job]}
+                  </span>
+                  <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="h-2 rounded-full transition-all duration-700"
+                      style={{ width: `${jobPcts[job]}%`, backgroundColor: JOB_COLORS[job] }}
+                    />
+                  </div>
+                  <span className="text-xs font-semibold text-slate-600 w-8 text-right shrink-0">
+                    {jobPcts[job]}%
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
+
+          {/* DAY 1 카드 */}
+          <div className="bg-white rounded-2xl border border-slate-100 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-bold text-slate-800">📝 DAY 1 나의 경험</p>
+              <button onClick={() => setEditMode('day1')}
+                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium underline underline-offset-2">
+                수정하기
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {DAY1_FIELDS.map(({ key, label }) => {
+                const val = day1Data[key]
+                return (
+                  <div key={key}>
+                    <p className="text-xs font-semibold text-slate-400 mb-1">{label}</p>
+                    {val?.trim() ? (
+                      <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{val}</p>
+                    ) : (
+                      <p className="text-sm text-slate-300 italic">작성하지 않았어요</p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <p className="text-center text-xs text-slate-300 pt-2">
+            이후 과정은 곧 열릴 예정이에요
+          </p>
         </div>
 
+        {/* DAY1 수정 오버레이 */}
+        {editMode === 'day1' && (
+          <Day1FormScreen
+            topJob={topJob}
+            sessionRound={sessionRound}
+            initialDay1={day1Data}
+            onComplete={() => { setEditMode('none'); router.refresh() }}
+            onClose={() => setEditMode('none')}
+          />
+        )}
+
         {showRollback && (
-          <RollbackModal currentStage={currentStage} sessionRound={sessionRound} onClose={() => setShowRollback(false)} />
+          <RollbackModal
+            currentStage={currentStage}
+            sessionRound={sessionRound}
+            onClose={() => setShowRollback(false)}
+          />
         )}
       </div>
     )

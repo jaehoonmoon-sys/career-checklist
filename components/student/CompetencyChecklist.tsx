@@ -66,9 +66,10 @@ type Props = {
   initialDay1: Day1Data
   sessionRound: number
   studentName: string
+  onAfterSave?: () => void  // 제공 시 저장 후 PostSaveFlow 대신 호출
 }
 
-export default function CompetencyChecklist({ initialAnswers, initialDay1, sessionRound, studentName }: Props) {
+export default function CompetencyChecklist({ initialAnswers, initialDay1, sessionRound, studentName, onAfterSave }: Props) {
   const [answers, setAnswers] = useState<Record<string, number>>(initialAnswers)
   const [saved, setSaved] = useState(
     Object.keys(initialAnswers).filter(k => !k.startsWith('_')).length > 0
@@ -145,7 +146,11 @@ export default function CompetencyChecklist({ initialAnswers, initialDay1, sessi
       }
       const result = await saveCompetencyAnswers(sessionRound, answersToSave)
       if (result?.error) { setSaveMsg(result.error) }
-      else { setSaved(true); setSaveMsg('저장됐어요!'); setTimeout(() => setSaveMsg(''), 2000); setShowFlow(true) }
+      else {
+        setSaved(true); setSaveMsg('저장됐어요!'); setTimeout(() => setSaveMsg(''), 2000)
+        if (onAfterSave) onAfterSave()
+        else setShowFlow(true)
+      }
     })
   }
 

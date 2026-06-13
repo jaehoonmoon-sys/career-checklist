@@ -37,6 +37,10 @@ export default async function StudentPage() {
     const scores = calcJobScores(initialAnswers)
     const topJob = JOB_KEYS.reduce((a, b) => scores[a] >= scores[b] ? a : b)
     const topJobPct = Math.max(0, Math.round((scores[topJob] / MAX_SCORES[topJob]) * 100))
+    const jobPcts = JOB_KEYS.reduce((acc, job) => ({
+      ...acc,
+      [job]: Math.max(0, Math.round((scores[job] / MAX_SCORES[job]) * 100)),
+    }), {} as Record<JobType, number>)
 
     return (
       <CareerJourneyView
@@ -45,6 +49,8 @@ export default async function StudentPage() {
         sessionRound={sessionRound}
         topJob={topJob}
         topJobPct={topJobPct}
+        jobPcts={jobPcts}
+        answers={initialAnswers}
         day1Data={day1Data}
         day23Data={day23Data}
         day5Data={day5Data}
