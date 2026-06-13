@@ -111,15 +111,8 @@ function ChoiceScreen({ topJob, topJobPct, preSelectedJob, onDay1, onClose }: {
   )
 }
 
-// ── DAY 1 폼 ─────────────────────────────────────────────────────
+// ── DAY 1 폼 (노션 레이아웃 — 단일 스크롤) ──────────────────────
 
-const DAY1_TABS = [
-  { key: 'exp',    label: '🗂️ 나의 경험' },
-  { key: 'energy', label: '⚡ 에너지 체크' },
-  { key: 'find',   label: '✅ 오늘의 발견' },
-] as const
-
-type Day1Tab = typeof DAY1_TABS[number]['key']
 type SetFn = (key: keyof Day1Data) => (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => void
 
 export function Day1FormScreen({ topJob, sessionRound, initialDay1, onComplete, onClose }: {
@@ -130,15 +123,11 @@ export function Day1FormScreen({ topJob, sessionRound, initialDay1, onComplete, 
   onClose: () => void
 }) {
   const [data, setData] = useState<Day1Data>({ ...EMPTY_DAY1, ...initialDay1 })
-  const [tab, setTab] = useState<Day1Tab>('exp')
   const [isPending, startTransition] = useTransition()
   const [saveMsg, setSaveMsg] = useState('')
 
   const set: SetFn = (key) => (e) =>
     setData(prev => ({ ...prev, [key]: e.target.value }))
-
-  const tabIndex = DAY1_TABS.findIndex(t => t.key === tab)
-  const isLastTab = tabIndex === DAY1_TABS.length - 1
 
   const handleSave = () => {
     startTransition(async () => {
@@ -149,7 +138,7 @@ export function Day1FormScreen({ topJob, sessionRound, initialDay1, onComplete, 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-slate-50">
+    <div className="fixed inset-0 z-50 flex flex-col bg-white">
       {/* 헤더 */}
       <div className="bg-white border-b border-slate-100 px-4 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
@@ -162,156 +151,221 @@ export function Day1FormScreen({ topJob, sessionRound, initialDay1, onComplete, 
         </button>
       </div>
 
-      {/* 안내 배너 */}
-      <div className="bg-blue-50 border-b border-blue-100 px-4 py-2.5 shrink-0">
-        <p className="text-xs text-blue-700 leading-relaxed">
-          💡 마케팅 경험이 없어도 괜찮아요. 올리브영 알바, 인스타 운영, 팀 프로젝트 — <strong>일단 다 꺼내세요.</strong> 선별은 나중에 합니다.
-          {topJob && (
-            <span className="ml-1">체크리스트 결과 <strong>{JOB_LABELS_FLAT[topJob]}</strong> 적합도가 가장 높았어요.</span>
-          )}
-        </p>
-      </div>
-
-      {/* 탭 */}
-      <div className="bg-white border-b border-slate-100 px-4 flex gap-0 shrink-0">
-        {DAY1_TABS.map((t, i) => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`py-2.5 px-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
-              tab === t.key
-                ? 'border-slate-900 text-slate-900'
-                : 'border-transparent text-slate-400 hover:text-slate-600'
-            }`}>
-            {t.label}
-            {/* 입력됐으면 점 표시 */}
-            {i < tabIndex && <span className="inline-block w-1 h-1 rounded-full bg-emerald-400 ml-1 mb-0.5" />}
-          </button>
-        ))}
-      </div>
-
       {/* 폼 내용 */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-4 py-5">
-          {tab === 'exp' && <ExpTab data={data} set={set} />}
-          {tab === 'energy' && <EnergyTab data={data} set={set} />}
-          {tab === 'find' && <FindTab data={data} set={set} />}
+        <div className="max-w-2xl mx-auto px-4 py-6 space-y-8">
+
+          {/* 시작 전 읽기 */}
+          <D1Callout color="blue" icon="💡">
+            <p className="font-semibold mb-1">시작 전 읽기 <span className="font-normal text-xs">(5분)</span></p>
+            <p className="leading-relaxed">오늘은 잘 보이지 않던 나의 경험을 꺼내는 날입니다.<br />
+            &quot;마케팅 경험이 없는데...&quot;라고 생각할 수 있지만, 마케팅은 생활에 녹아있습니다.<br />
+            올리브영 알바에서 고객에게 제품을 추천했다면 → 세일즈와 고객 이해입니다.<br />
+            인스타에 올린 사진 한 장도, 친구에게 맛집 추천도 → 모두 커뮤니케이션입니다.<br />
+            <strong>일단 다 꺼내놓는 게 오늘의 목표입니다. 선별은 나중에 합니다.</strong>
+            {topJob && <span className="ml-1">체크리스트 결과 <strong>{JOB_LABELS_FLAT[topJob]}</strong> 적합도가 가장 높았어요.</span>}
+            </p>
+          </D1Callout>
+
+          {/* 파트 1 */}
+          <D1SectionHeader title="파트 1 | 캠프 전 나의 경험" time="20분" />
+
+          <D1Field
+            label="1-1. 일 / 알바 / 직장 경험"
+            desc="어떤 일을 했나요? 마케팅과 관련 없어도 됩니다."
+            example="카페 알바 → 고객 응대, 단골 파악 / 올리브영 → 제품 추천, 진열 / 콜센터 → 고객 불만 해결 / 식당 알바 → 주문 패턴 관찰, 메뉴 추천"
+          >
+            <D1Textarea value={data.work} onChange={set('work')} />
+          </D1Field>
+
+          <D1Field
+            label="1-2. 학교 / 학습 경험"
+            desc="전공, 수업, 동아리, 학생회, 팀 프로젝트 등"
+            example="학보사 → 기사 작성, 인터뷰 / 축제 기획단 → 홍보물 제작, SNS 운영 / 경영 수업 → 마케팅 케이스 분석 / 조별 과제 → 기획, 발표 자료 제작"
+          >
+            <D1Textarea value={data.school} onChange={set('school')} />
+          </D1Field>
+
+          <D1Field
+            label="1-3. 개인 활동"
+            desc="SNS, 블로그, 유튜브, 커뮤니티, 취미, 여행 등 뭐든"
+            example="인스타그램 운영 → 콘텐츠 기획, 해시태그 전략 / 독서 블로그 → 꾸준한 글쓰기 / 좋아하는 브랜드 덕질 → 브랜드 분석 / 여행 → 현지 마케팅 관찰"
+          >
+            <D1Textarea value={data.personal} onChange={set('personal')} />
+          </D1Field>
+
+          {/* 파트 2 — 캠프 프로젝트 테이블 */}
+          <D1SectionHeader title="파트 2 | 캠프에서 내가 한 것들" time="15분" />
+          <p className="text-sm text-slate-600 -mt-4">각 프로젝트에서 내가 맡은 역할과 실제로 만든 것을 적어주세요.</p>
+
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="bg-slate-50">
+                  <th className="border-b border-r border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 text-left w-32">프로젝트</th>
+                  <th className="border-b border-r border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 text-left">내가 맡은 역할</th>
+                  <th className="border-b border-r border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 text-left">실제로 만든 것</th>
+                  <th className="border-b border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 text-left">기억에 남는 것</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="border-b border-r border-slate-200 px-3 py-2 text-xs text-slate-500 align-top bg-slate-50">
+                    기초 프로젝트<br /><span className="text-slate-400">(AI 광고 콘텐츠)</span>
+                  </td>
+                  <td className="border-b border-r border-slate-200 p-1">
+                    <D1CellArea value={data.camp_basic_role} onChange={set('camp_basic_role')} />
+                  </td>
+                  <td className="border-b border-r border-slate-200 p-1">
+                    <D1CellArea value={data.camp_basic_made} onChange={set('camp_basic_made')} />
+                  </td>
+                  <td className="border-b border-slate-200 p-1">
+                    <D1CellArea value={data.camp_basic_memory} onChange={set('camp_basic_memory')} />
+                  </td>
+                </tr>
+                <tr>
+                  <td className="border-r border-slate-200 px-3 py-2 text-xs text-slate-500 align-top bg-slate-50">
+                    심화 프로젝트<br /><span className="text-slate-400">(광고 콘텐츠 제작)</span>
+                  </td>
+                  <td className="border-r border-slate-200 p-1">
+                    <D1CellArea value={data.camp_adv_role} onChange={set('camp_adv_role')} />
+                  </td>
+                  <td className="border-r border-slate-200 p-1">
+                    <D1CellArea value={data.camp_adv_made} onChange={set('camp_adv_made')} />
+                  </td>
+                  <td className="p-1">
+                    <D1CellArea value={data.camp_adv_memory} onChange={set('camp_adv_memory')} />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* 파트 3 — 에너지 체크 */}
+          <D1SectionHeader title="파트 3 | 에너지 체크" time="15분" />
+
+          <D1Field label="몰입했던 순간" desc="언제 시간 가는 줄 몰랐나요? (캠프 안팎 모두)">
+            <D1Textarea value={data.energy_flow} onChange={set('energy_flow')} />
+          </D1Field>
+
+          <D1Field label="잘한다고 느꼈던 순간" desc="칭찬받았거나, 스스로 뿌듯했던 경험">
+            <D1Textarea value={data.good_at} onChange={set('good_at')} />
+          </D1Field>
+
+          <D1Field label="하기 싫었던 것" desc="어떤 작업이 유독 힘들거나 피하고 싶었나요?">
+            <D1Callout color="yellow" icon="💬">
+              → <strong>왜 그랬을 것 같나요?</strong> &ldquo;싫다&rdquo;는 감정의 이유를 쓰는 게 핵심입니다.<br />
+              &ldquo;적성에 안 맞아서&rdquo;보다 &ldquo;숫자를 다루는 게 막막해서&rdquo;, &ldquo;혼자 오래 앉아있는 게 힘들어서&rdquo;처럼 구체적으로.
+            </D1Callout>
+            <D1Textarea value={data.dislike} onChange={set('dislike')} placeholder="어떤 것이 힘들었나요? (이유까지 작성)" />
+          </D1Field>
+
+          {/* 오늘의 발견 */}
+          <D1SectionHeader title="✅ 오늘의 발견" time="5분" />
+          <D1Textarea
+            value={data.today_discovery}
+            onChange={set('today_discovery')}
+            rows={5}
+            placeholder={`오늘 적으면서 새롭게 발견한 나의 경험:\n\n「경험이라고 생각 못 했는데, 쓸 수 있겠다」 싶은 것:`}
+          />
+
         </div>
       </div>
 
-      {/* 하단 버튼 */}
+      {/* 하단 저장 버튼 */}
       <div className="bg-white border-t border-slate-100 p-4 shrink-0">
         <div className="max-w-2xl mx-auto">
           {saveMsg && <p className="text-xs text-red-500 mb-2">{saveMsg}</p>}
-          <div className="flex gap-2">
-            {!isLastTab ? (
-              <>
-                <button onClick={() => setTab(DAY1_TABS[tabIndex + 1].key)}
-                  className="flex-1 bg-slate-900 text-white font-semibold py-2.5 rounded-xl text-sm">
-                  다음 →
-                </button>
-                <button onClick={handleSave} disabled={isPending}
-                  className="px-4 bg-slate-100 text-slate-600 font-medium py-2.5 rounded-xl text-sm disabled:opacity-50 whitespace-nowrap">
-                  {isPending ? '저장 중...' : '바로 저장'}
-                </button>
-              </>
-            ) : (
-              <button onClick={handleSave} disabled={isPending}
-                className="flex-1 bg-slate-900 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-50">
-                {isPending ? '저장 중...' : '💾 저장 완료'}
-              </button>
-            )}
-          </div>
+          <button onClick={handleSave} disabled={isPending}
+            className="w-full bg-slate-900 text-white font-semibold py-3 rounded-xl text-sm disabled:opacity-50">
+            {isPending ? '저장 중...' : '💾 저장 완료'}
+          </button>
         </div>
       </div>
     </div>
   )
 }
 
-// ── 탭별 섹션 ──────────────────────────────────────────────────────
+// ── DAY1 폼 UI 헬퍼 ──────────────────────────────────────────────
 
-function Label({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm font-semibold text-slate-800 mb-1">{children}</p>
+function D1SectionHeader({ title, time }: { title: string; time: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex-1 h-px bg-slate-200" />
+      <p className="text-xs font-bold text-slate-500 whitespace-nowrap">
+        {title} <span className="font-normal text-slate-400">· {time}</span>
+      </p>
+      <div className="flex-1 h-px bg-slate-200" />
+    </div>
+  )
 }
-function Hint({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs text-slate-400 mb-2 leading-relaxed">{children}</p>
+
+function D1Field({ label, desc, example, children }: {
+  label: string
+  desc?: string
+  example?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-semibold text-slate-800">{label}</p>
+      {desc && <p className="text-xs text-slate-500">{desc}</p>}
+      {example && (
+        <D1Callout color="amber" icon="📎">
+          <strong>예시</strong>: {example}
+        </D1Callout>
+      )}
+      {children}
+    </div>
+  )
 }
-function Area({ value, onChange, placeholder, rows = 4 }: {
+
+function D1Callout({ color, icon, children }: {
+  color: 'blue' | 'amber' | 'yellow'
+  icon: string
+  children: React.ReactNode
+}) {
+  const cls = {
+    blue:  'bg-blue-50 border border-blue-100 text-blue-800',
+    amber: 'bg-amber-50 border border-amber-100 text-amber-800',
+    yellow: 'bg-yellow-50 border border-yellow-100 text-yellow-800',
+  }[color]
+  return (
+    <div className={`${cls} rounded-xl px-3 py-2.5 text-xs leading-relaxed`}>
+      <span className="mr-1">{icon}</span>{children}
+    </div>
+  )
+}
+
+function D1Textarea({ value, onChange, placeholder, rows = 4 }: {
   value: string
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
   placeholder?: string
   rows?: number
 }) {
   return (
-    <textarea value={value} onChange={onChange} rows={rows} placeholder={placeholder}
-      className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300 resize-none" />
+    <textarea
+      value={value}
+      onChange={onChange}
+      rows={rows}
+      placeholder={placeholder ?? '여기에 작성하세요'}
+      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:bg-white resize-none transition-colors"
+    />
   )
 }
 
-function ExpTab({ data, set }: { data: Day1Data; set: SetFn }) {
+function D1CellArea({ value, onChange }: {
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
+}) {
   return (
-    <div className="space-y-5">
-      <div>
-        <Label>💼 일 / 알바 / 직장 경험</Label>
-        <Hint>마케팅과 관련 없어도 됩니다. 예: 카페 알바 → 고객 응대, 단골 파악 / 올리브영 → 제품 추천, 진열</Hint>
-        <Area value={data.work} onChange={set('work')} placeholder="어떤 일을 했나요?" />
-      </div>
-      <div>
-        <Label>🎓 학교 / 학습 경험</Label>
-        <Hint>전공, 동아리, 학생회, 팀 프로젝트 등. 예: 학보사 기자, 축제 홍보 기획, 경영 수업 케이스 분석</Hint>
-        <Area value={data.school} onChange={set('school')} placeholder="어떤 활동을 했나요?" />
-      </div>
-      <div>
-        <Label>🌱 개인 활동</Label>
-        <Hint>SNS, 블로그, 취미 등. 예: 인스타 운영, 브랜드 덕질, 여행</Hint>
-        <Area value={data.personal} onChange={set('personal')} placeholder="어떤 활동을 즐겼나요?" />
-      </div>
-      <div>
-        <Label>🏕️ 캠프에서 내가 한 것들</Label>
-        <Hint>각 프로젝트에서 맡은 역할, 실제로 만든 것, 기억에 남는 것을 자유롭게 적어주세요.</Hint>
-        <Area value={data.camp_projects} onChange={set('camp_projects')} rows={5}
-          placeholder={`기초 프로젝트: 내가 맡은 역할 / 만든 것\n심화 프로젝트: ...\n실전 프로젝트: ...`} />
-      </div>
-    </div>
-  )
-}
-
-function EnergyTab({ data, set }: { data: Day1Data; set: SetFn }) {
-  return (
-    <div className="space-y-5">
-      <div>
-        <Label>⚡ 몰입했던 순간</Label>
-        <Hint>언제 시간 가는 줄 몰랐나요? 캠프 안팎 모두 OK</Hint>
-        <Area value={data.energy_flow} onChange={set('energy_flow')}
-          placeholder="시간 가는 줄 모르고 했던 일이나 활동을 써주세요" />
-      </div>
-      <div>
-        <Label>✨ 잘한다고 느꼈던 순간</Label>
-        <Hint>칭찬받았거나 스스로 뿌듯했던 경험. 구체적인 상황일수록 좋아요.</Hint>
-        <Area value={data.good_at} onChange={set('good_at')}
-          placeholder="어떤 일을 했을 때 잘한다는 느낌이 들었나요?" />
-      </div>
-      <div>
-        <Label>😣 하기 싫었던 것 + 이유</Label>
-        <Hint>「적성에 안 맞아서」보다 「숫자가 막막해서」처럼 구체적으로. 피하고 싶은 걸 알면 맞는 방향도 보여요.</Hint>
-        <Area value={data.dislike} onChange={set('dislike')} rows={5}
-          placeholder={`어떤 작업이 힘들었나요?\n왜 그랬을 것 같나요?`} />
-      </div>
-    </div>
-  )
-}
-
-function FindTab({ data, set }: { data: Day1Data; set: SetFn }) {
-  return (
-    <div className="space-y-5">
-      <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-sm text-amber-800 leading-relaxed">
-        오늘 적으면서 새롭게 발견한 것들을 기록해두세요. 나중에 강점과 방향을 찾을 때 중요한 단서가 됩니다.
-      </div>
-      <div>
-        <Label>✅ 오늘의 발견</Label>
-        <Hint>오늘 적으면서 새롭게 발견한 나의 경험, 「경험이라고 생각 못했는데 쓸 수 있겠다」 싶은 것</Hint>
-        <Area value={data.today_discovery} onChange={set('today_discovery')} rows={6}
-          placeholder={`오늘 적으면서 새롭게 발견한 나의 경험:\n\n「경험이라고 생각 못 했는데, 쓸 수 있겠다」 싶은 것:`} />
-      </div>
-    </div>
+    <textarea
+      value={value}
+      onChange={onChange}
+      rows={3}
+      placeholder="여기에 작성하세요"
+      className="w-full bg-transparent text-sm text-slate-700 placeholder:text-slate-300 px-2 py-1.5 focus:outline-none resize-none min-h-[60px]"
+    />
   )
 }
 

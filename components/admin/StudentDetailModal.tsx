@@ -444,32 +444,39 @@ function JourneyView({ student }: { student: StudentRow }) {
       {/* DAY 1 데이터 */}
       {student.day1_data && Object.values(student.day1_data).some(v => v?.trim()) && (
         <DayDataBlock title="📅 DAY 1 | 나의 경험 꺼내기" fields={[
-          { key: 'work', label: '💼 일/알바/직장 경험' },
-          { key: 'school', label: '🎓 학교/학습 경험' },
-          { key: 'personal', label: '🌱 개인 활동' },
-          { key: 'camp_projects', label: '🏕️ 캠프 경험' },
-          { key: 'energy_flow', label: '⚡ 몰입했던 순간' },
-          { key: 'good_at', label: '✨ 잘한다고 느꼈던 순간' },
-          { key: 'dislike', label: '😣 하기 싫었던 것' },
-          { key: 'today_discovery', label: '✅ 오늘의 발견' },
+          { key: 'work',              label: '💼 일/알바/직장 경험' },
+          { key: 'school',            label: '🎓 학교/학습 경험' },
+          { key: 'personal',          label: '🌱 개인 활동' },
+          { key: 'camp_basic_role',   label: '🏕️ 기초 PJT — 역할' },
+          { key: 'camp_basic_made',   label: '🏕️ 기초 PJT — 만든 것' },
+          { key: 'camp_basic_memory', label: '🏕️ 기초 PJT — 기억에 남는 것' },
+          { key: 'camp_adv_role',     label: '🏕️ 심화 PJT — 역할' },
+          { key: 'camp_adv_made',     label: '🏕️ 심화 PJT — 만든 것' },
+          { key: 'camp_adv_memory',   label: '🏕️ 심화 PJT — 기억에 남는 것' },
+          { key: 'energy_flow',       label: '⚡ 몰입했던 순간' },
+          { key: 'good_at',           label: '✨ 잘한다고 느꼈던 순간' },
+          { key: 'dislike',           label: '😣 하기 싫었던 것' },
+          { key: 'today_discovery',   label: '✅ 오늘의 발견' },
         ]} data={student.day1_data as Record<string, string>} />
       )}
 
       {/* DAY 2+3 데이터 */}
       {student.day23_data && Object.values(student.day23_data).some(v => v && String(v).trim()) && (
         <DayDataBlock title="📅 DAY 2+3 | 마케터 탐색 + 취업 방향" fields={[
-          { key: 'curriculum_notes', label: '📚 커리큘럼 흥미로웠던 것' },
-          { key: 'work_style', label: '🎯 업무 스타일' },
-          { key: 'strengths', label: '💪 강점 초안' },
+          { key: 'curriculum',        label: '📚 커리큘럼 체크' },
+          { key: 'work_style',        label: '🎯 업무 스타일' },
+          { key: 'strengths',         label: '💪 강점 초안' },
           { key: 'marketer_sentence', label: '✍️ 한 문장 완성' },
-          { key: 'target_job_1', label: '🥇 1순위 직무' },
-          { key: 'target_job_2', label: '🥈 2순위 직무' },
-          { key: 'industries', label: '🏭 관심 산업' },
-          { key: 'work_environment', label: '🏢 일하고 싶은 환경' },
-          { key: 'target_jd_url', label: '📄 목표 JD 링크' },
-          { key: 'target_jd_note', label: '📝 JD 메모' },
-          { key: 'compass_draft', label: '🧭 취업 나침반 초안' },
-        ]} data={student.day23_data as Record<string, string>} />
+          { key: 'target_job_1',      label: '🥇 1순위 직무' },
+          { key: 'target_job_2',      label: '🥈 2순위 직무' },
+          { key: 'industries',        label: '🏭 관심 산업' },
+          { key: 'industry_connection', label: '🔗 DAY1 경험 연결' },
+          { key: 'work_env_type',     label: '🏢 대행사 vs 인하우스' },
+          { key: 'work_env_size',     label: '🏢 회사 규모' },
+          { key: 'target_jd_url',     label: '📄 목표 JD 링크' },
+          { key: 'target_jd_note',    label: '📝 JD 메모' },
+          { key: 'compass_draft',     label: '🧭 취업 나침반 초안' },
+        ]} data={serializeDay23(student.day23_data as Record<string, unknown>)} />
       )}
 
       {/* DAY 5 데이터 */}
@@ -508,6 +515,37 @@ function JourneyView({ student }: { student: StudentRow }) {
       )}
     </div>
   )
+}
+
+function serializeDay23(raw: Record<string, unknown>): Record<string, string> {
+  const result: Record<string, string> = {}
+  const STR_KEYS = ['strengths', 'marketer_sentence', 'target_job_1', 'target_job_2',
+    'industries', 'industry_connection', 'target_jd_url', 'target_jd_note', 'compass_draft']
+  for (const k of STR_KEYS) {
+    if (typeof raw[k] === 'string') result[k] = raw[k] as string
+  }
+  if (Array.isArray(raw.curriculum)) {
+    const AREAS = ['광고 기획', 'AI 활용 콘텐츠', '비주얼 전략', '퍼포먼스 마케팅', '데이터 분석', '그로스 마케팅', '글쓰기/카피', '캠페인 기획']
+    result.curriculum = (raw.curriculum as {interesting:boolean;good_at:boolean;boring:boolean;comment:string}[])
+      .map((r, i) => {
+        const tags = [r.interesting && '흥미', r.good_at && '잘했다', r.boring && '별로'].filter(Boolean).join('/')
+        return `${AREAS[i] ?? i}: ${tags || '-'}${r.comment ? ' · ' + r.comment : ''}`
+      }).join('\n')
+  }
+  if (Array.isArray(raw.work_style)) {
+    const AB = [['숫자·분석','기획·크리에이티브'],['빠른 실행','깊이 있는 사고'],['혼자 집중','협업·소통'],['즉각 성과','장기 전략']]
+    result.work_style = (raw.work_style as {score:string;comment:string}[])
+      .map((r, i) => `${AB[i]?.[0]}(${r.score||'-'})${AB[i]?.[1]}${r.comment ? ' · '+r.comment : ''}`).join('\n')
+  }
+  if (Array.isArray(raw.work_env_type)) {
+    result.work_env_type = (raw.work_env_type as {choice:string;reason:string}[])
+      .map((r, i) => `${['대행사','인하우스'][i]}: ${r.choice||'-'}${r.reason ? ' · '+r.reason : ''}`).join('\n')
+  }
+  if (Array.isArray(raw.work_env_size)) {
+    result.work_env_size = (raw.work_env_size as {choice:string;reason:string}[])
+      .map((r, i) => `${['스타트업','중소기업','중견·대기업'][i]}: ${r.choice||'-'}${r.reason ? ' · '+r.reason : ''}`).join('\n')
+  }
+  return result
 }
 
 function DayDataBlock({ title, fields, data }: {

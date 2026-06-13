@@ -7,6 +7,8 @@ import { saveDay23, saveDay5, rollbackStage, type RollbackTarget } from '@/app/a
 import {
   type Day1Data, type Day23Data, type Day5Data,
   EMPTY_DAY23, EMPTY_DAY5,
+  CURRICULUM_AREAS, WORK_STYLE_ITEMS, WORK_ENV_TYPE_ITEMS, WORK_ENV_SIZE_ITEMS,
+  type CurrRow, type WsRow, type WenvRow,
 } from '@/lib/types'
 import CompetencyChecklist from './CompetencyChecklist'
 import { Day1FormScreen } from './PostSaveFlow'
@@ -59,14 +61,19 @@ function StageProgress({ stage }: { stage: number }) {
 const JOB_ORDER: JobType[] = ['performance', 'content', 'brand', 'growth', 'crm', 'ae']
 
 const DAY1_FIELDS: { key: keyof Day1Data; label: string }[] = [
-  { key: 'work',            label: '💼 일/알바/직장 경험' },
-  { key: 'school',          label: '🎓 학교/학습 경험' },
-  { key: 'personal',        label: '🌱 개인 활동' },
-  { key: 'camp_projects',   label: '🏕️ 캠프에서 내가 한 것들' },
-  { key: 'energy_flow',     label: '⚡ 몰입했던 순간' },
-  { key: 'good_at',         label: '✨ 잘한다고 느꼈던 순간' },
-  { key: 'dislike',         label: '😣 하기 싫었던 것' },
-  { key: 'today_discovery', label: '✅ 오늘의 발견' },
+  { key: 'work',              label: '💼 일/알바/직장 경험' },
+  { key: 'school',            label: '🎓 학교/학습 경험' },
+  { key: 'personal',          label: '🌱 개인 활동' },
+  { key: 'camp_basic_role',   label: '🏕️ 기초 프로젝트 — 내가 맡은 역할' },
+  { key: 'camp_basic_made',   label: '🏕️ 기초 프로젝트 — 실제로 만든 것' },
+  { key: 'camp_basic_memory', label: '🏕️ 기초 프로젝트 — 기억에 남는 것' },
+  { key: 'camp_adv_role',     label: '🏕️ 심화 프로젝트 — 내가 맡은 역할' },
+  { key: 'camp_adv_made',     label: '🏕️ 심화 프로젝트 — 실제로 만든 것' },
+  { key: 'camp_adv_memory',   label: '🏕️ 심화 프로젝트 — 기억에 남는 것' },
+  { key: 'energy_flow',       label: '⚡ 몰입했던 순간' },
+  { key: 'good_at',           label: '✨ 잘한다고 느꼈던 순간' },
+  { key: 'dislike',           label: '😣 하기 싫었던 것' },
+  { key: 'today_discovery',   label: '✅ 오늘의 발견' },
 ]
 
 type Props = {
@@ -231,126 +238,91 @@ export default function CareerJourneyView({
 // DAY 2+3 폼
 // ══════════════════════════════════════════════════════════════════
 
-const DAY23_TABS = [
-  { key: 'day2', label: '🔍 나는 어떤 마케터인가' },
-  { key: 'day3', label: '🧭 나의 취업 방향' },
-] as const
-
-type Day23Tab = typeof DAY23_TABS[number]['key']
-type SetDay23Fn = (key: keyof Day23Data) => (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => void
-
-function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutorComment, onComplete, onRollbackRequest }: {
-  studentName: string
-  sessionRound: number
-  topJob: JobType | null
-  initialData: Day23Data
-  tutorComment: string | null
-  onComplete: () => void
-  onRollbackRequest?: () => void
-}) {
-  const [data, setData] = useState<Day23Data>(initialData)
-  const [tab, setTab] = useState<Day23Tab>('day2')
-  const [isPending, startTransition] = useTransition()
-  const [saveMsg, setSaveMsg] = useState('')
-
-  const set: SetDay23Fn = (key) => (e) =>
-    setData(prev => ({ ...prev, [key]: e.target.value }))
-
-  const tabIndex = DAY23_TABS.findIndex(t => t.key === tab)
-  const isLastTab = tabIndex === DAY23_TABS.length - 1
-
-  const handleSave = () => {
-    startTransition(async () => {
-      const result = await saveDay23(sessionRound, data)
-      if (result?.error) setSaveMsg(result.error)
-      else onComplete()
-    })
-  }
-
+// ── D23 공통 헬퍼 ──────────────────────────────────────────────
+function D23SectionHeader({ title, bgClass }: { title: string; bgClass: string }) {
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <nav className="bg-white border-b border-slate-100 sticky top-0 z-10 shrink-0">
-        <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between">
-          <span className="text-sm text-slate-500">{studentName}님</span>
-          <StageProgress stage={2} />
-          {onRollbackRequest ? (
-            <button onClick={onRollbackRequest} className="text-xs text-slate-400 hover:text-amber-600 transition-colors">
-              ↩ 수정하기
-            </button>
-          ) : <span />}
-        </div>
-      </nav>
-
-      <div className="bg-white border-b border-slate-100 px-4 py-3 shrink-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <span className="text-xs font-bold text-white bg-blue-600 px-2 py-0.5 rounded-full">DAY 2+3</span>
-          <h2 className="text-sm font-bold text-slate-900">나는 어떤 마케터인가? + 취업 방향</h2>
-        </div>
-        {topJob && (
-          <p className="text-xs text-slate-400">
-            체크리스트 결과: <span className="font-semibold" style={{ color: JOB_COLORS[topJob] }}>{JOB_LABELS_FLAT[topJob]}</span> 적합도 참고해서 작성해보세요
-          </p>
-        )}
-      </div>
-
-      {/* 튜터 코멘트 배너 */}
-      {tutorComment && (
-        <div className="bg-emerald-50 border-b border-emerald-100 px-4 py-3 shrink-0">
-          <p className="text-xs font-semibold text-emerald-700 mb-1">💬 튜터님 피드백</p>
-          <p className="text-sm text-emerald-800 leading-relaxed whitespace-pre-wrap">{tutorComment}</p>
-        </div>
-      )}
-
-      {/* 탭 */}
-      <div className="bg-white border-b border-slate-100 px-4 flex gap-0 shrink-0">
-        {DAY23_TABS.map((t, i) => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`py-2.5 px-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
-              tab === t.key
-                ? 'border-slate-900 text-slate-900'
-                : 'border-transparent text-slate-400 hover:text-slate-600'
-            }`}>
-            {t.label}
-            {i < tabIndex && <span className="inline-block w-1 h-1 rounded-full bg-emerald-400 ml-1 mb-0.5" />}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-4 py-5">
-          {tab === 'day2' && <Day2Tab data={data} set={set} topJob={topJob} />}
-          {tab === 'day3' && <Day3Tab data={data} set={set} />}
-        </div>
-      </div>
-
-      <div className="bg-white border-t border-slate-100 p-4 shrink-0">
-        <div className="max-w-2xl mx-auto">
-          {saveMsg && <p className="text-xs text-red-500 mb-2">{saveMsg}</p>}
-          <div className="flex gap-2">
-            {!isLastTab ? (
-              <>
-                <button onClick={() => setTab(DAY23_TABS[tabIndex + 1].key)}
-                  className="flex-1 bg-slate-900 text-white font-semibold py-2.5 rounded-xl text-sm">
-                  다음 →
-                </button>
-                <button onClick={handleSave} disabled={isPending}
-                  className="px-4 bg-slate-100 text-slate-600 font-medium py-2.5 rounded-xl text-sm disabled:opacity-50 whitespace-nowrap">
-                  {isPending ? '저장 중...' : '바로 저장'}
-                </button>
-              </>
-            ) : (
-              <button onClick={handleSave} disabled={isPending}
-                className="flex-1 bg-slate-900 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-50">
-                {isPending ? '저장 중...' : '💾 저장하고 면담 요청하기'}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+    <div className="flex items-center gap-3">
+      <span className={`text-xs font-bold text-white px-2.5 py-1 rounded-full whitespace-nowrap ${bgClass}`}>{title}</span>
+      <div className="flex-1 h-px bg-slate-100" />
     </div>
   )
 }
+function D23Card({ title, time, children }: { title: string; time?: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+      <div className="px-5 py-3 bg-slate-50 border-b border-slate-100">
+        <p className="text-sm font-semibold text-slate-800">
+          {title}
+          {time && <span className="text-xs font-normal text-slate-400 ml-1.5">({time})</span>}
+        </p>
+      </div>
+      <div className="p-5 space-y-4">{children}</div>
+    </div>
+  )
+}
+function D23Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-xs font-semibold text-slate-700 mb-1">{label}</p>
+      {hint && <p className="text-xs text-slate-400 mb-1.5 leading-relaxed">{hint}</p>}
+      {children}
+    </div>
+  )
+}
+function D23Callout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 text-xs text-amber-700 mb-2 leading-relaxed">
+      {children}
+    </div>
+  )
+}
+function D23Textarea({ value, onChange, placeholder, rows = 4 }: {
+  value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
+  placeholder?: string; rows?: number
+}) {
+  return (
+    <textarea value={value} onChange={onChange} rows={rows} placeholder={placeholder}
+      className="w-full bg-slate-50 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200 resize-none" />
+  )
+}
+function CbCell({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button type="button" onClick={() => onChange(!checked)}
+      className={`w-5 h-5 rounded border-2 flex items-center justify-center mx-auto transition-all ${
+        checked ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 hover:border-slate-400'
+      }`}>
+      {checked && (
+        <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      )}
+    </button>
+  )
+}
+function OXButtons({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex gap-1 justify-center">
+      {['O', 'X'].map(v => (
+        <button key={v} type="button" onClick={() => onChange(value === v ? '' : v)}
+          className={`w-7 h-7 rounded-lg text-xs font-bold transition-all ${
+            value === v
+              ? v === 'O' ? 'bg-emerald-500 text-white' : 'bg-red-400 text-white'
+              : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+          }`}>
+          {v}
+        </button>
+      ))}
+    </div>
+  )
+}
+function TdInput({ value, onChange }: { value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) {
+  return (
+    <input value={value} onChange={onChange} placeholder="여기에 작성하세요"
+      className="w-full bg-transparent text-xs text-slate-700 placeholder:text-slate-300 focus:outline-none focus:bg-slate-50 rounded px-1 py-0.5 min-w-[80px]" />
+  )
+}
 
+// ── 기존 Day5 공용 헬퍼 (유지) ────────────────────────────────
 function Label({ children }: { children: React.ReactNode }) {
   return <p className="text-sm font-semibold text-slate-800 mb-1">{children}</p>
 }
@@ -369,86 +341,305 @@ function Area({ value, onChange, placeholder, rows = 4 }: {
   )
 }
 
-function Day2Tab({ data, set, topJob }: { data: Day23Data; set: SetDay23Fn; topJob: JobType | null }) {
-  return (
-    <div className="space-y-5">
-      <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-700 leading-relaxed">
-        DAY 1에서 꺼낸 경험을 바탕으로 <strong>어떤 마케터가 되고 싶은지</strong> 윤곽을 잡아보세요.
-        {topJob && ` 체크리스트 결과(${JOB_LABELS_FLAT[topJob]})도 참고해보세요.`}
-      </div>
-      <div>
-        <Label>📚 커리큘럼 중 흥미로웠던 것</Label>
-        <Hint>배운 것들 중 흥미로웠던 것, 잘했던 것, 별로였던 것을 자유롭게 적어보세요. 솔직하게!</Hint>
-        <Area value={data.curriculum_notes} onChange={set('curriculum_notes')} rows={5}
-          placeholder={`흥미로웠던 영역: (광고 기획, AI 콘텐츠, 퍼포먼스 마케팅, 데이터 분석 등)\n잘했다/할 수 있겠다 싶은 것:\n별로였던 것 + 이유:`} />
-      </div>
-      <div>
-        <Label>🎯 나의 업무 스타일</Label>
-        <Hint>아래 중 나는 어디에 가까운가요? 솔직하게 점수(1~5)나 설명으로 적어보세요.</Hint>
-        <Area value={data.work_style} onChange={set('work_style')} rows={5}
-          placeholder={`숫자·분석 ←→ 기획·크리에이티브 (1~5): \n빠른 실행 ←→ 깊이 있는 사고 (1~5): \n혼자 집중 ←→ 협업·소통 (1~5): \n즉각 성과 ←→ 장기 전략 (1~5):`} />
-      </div>
-      <div>
-        <Label>💪 나의 강점 3가지</Label>
-        <Hint>「나는 __을 잘한다, 왜냐하면 __한 경험이 있기 때문이다」 형식으로 써보세요.</Hint>
-        <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 text-xs text-amber-700 mb-2">
-          예: 「나는 감정을 건드리는 글을 잘 쓴다, 왜냐하면 콘텐츠 프로젝트에서 내 카피를 팀원들이 가장 많이 선택했기 때문이다」
-        </div>
-        <Area value={data.strengths} onChange={set('strengths')} rows={6}
-          placeholder={`강점 1: 나는 __ 을 잘한다, 왜냐하면...\n\n강점 2: 나는 __ 을 잘한다, 왜냐하면...\n\n강점 3: 나는 __ 을 잘한다, 왜냐하면...`} />
-      </div>
-      <div>
-        <Label>✍️ 한 문장 완성</Label>
-        <Hint>아직 완벽하지 않아도 됩니다. 지금 이 순간의 나를 써보세요.</Hint>
-        <Area value={data.marketer_sentence} onChange={set('marketer_sentence')} rows={3}
-          placeholder={`나는 ___한 마케터가 되고 싶다.\n왜냐하면 나는 ___할 때 가장 살아있다고 느끼기 때문이다.`} />
-      </div>
-    </div>
-  )
-}
+function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutorComment, onComplete, onRollbackRequest }: {
+  studentName: string
+  sessionRound: number
+  topJob: JobType | null
+  initialData: Day23Data
+  tutorComment: string | null
+  onComplete: () => void
+  onRollbackRequest?: () => void
+}) {
+  const [data, setData] = useState<Day23Data>(initialData)
+  const [isPending, startTransition] = useTransition()
+  const [saveMsg, setSaveMsg] = useState('')
 
-function Day3Tab({ data, set }: { data: Day23Data; set: SetDay23Fn }) {
+  const setStr = (key: keyof Day23Data) => (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) =>
+    setData(prev => ({ ...prev, [key]: e.target.value }))
+
+  const setCurr = (i: number, field: keyof CurrRow, val: boolean | string) =>
+    setData(prev => {
+      const curriculum = [...prev.curriculum] as CurrRow[]
+      curriculum[i] = { ...curriculum[i], [field]: val }
+      return { ...prev, curriculum }
+    })
+
+  const setWs = (i: number, field: keyof WsRow, val: string) =>
+    setData(prev => {
+      const work_style = [...prev.work_style] as WsRow[]
+      work_style[i] = { ...work_style[i], [field]: val }
+      return { ...prev, work_style }
+    })
+
+  const setWenv = (type: 'work_env_type' | 'work_env_size', i: number, field: keyof WenvRow, val: string) =>
+    setData(prev => {
+      const arr = [...prev[type]] as WenvRow[]
+      arr[i] = { ...arr[i], [field]: val }
+      return { ...prev, [type]: arr }
+    })
+
+  const handleSave = () => {
+    startTransition(async () => {
+      const result = await saveDay23(sessionRound, data)
+      if (result?.error) setSaveMsg(result.error)
+      else onComplete()
+    })
+  }
+
   return (
-    <div className="space-y-5">
-      <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-700 leading-relaxed">
-        DAY 2에서 파악한 나의 스타일과 강점을 바탕으로 <strong>어디로 갈지</strong> 방향을 잡아보세요.
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <nav className="bg-white border-b border-slate-100 sticky top-0 z-10 shrink-0">
+        <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between">
+          <span className="text-sm text-slate-500">{studentName}님</span>
+          <StageProgress stage={2} />
+          {onRollbackRequest ? (
+            <button onClick={onRollbackRequest} className="text-xs text-slate-400 hover:text-amber-600 transition-colors">↩ 수정하기</button>
+          ) : <span />}
+        </div>
+      </nav>
+
+      <div className="bg-white border-b border-slate-100 px-4 py-3 shrink-0">
+        <div className="flex items-center gap-2 mb-0.5">
+          <span className="text-xs font-bold text-white bg-blue-600 px-2 py-0.5 rounded-full">DAY 2+3</span>
+          <h2 className="text-sm font-bold text-slate-900">나는 어떤 마케터인가? + 취업 방향</h2>
+        </div>
+        {topJob && (
+          <p className="text-xs text-slate-400">
+            체크리스트 결과: <span className="font-semibold" style={{ color: JOB_COLORS[topJob] }}>{JOB_LABELS_FLAT[topJob]}</span> 적합도 참고해서 작성해보세요
+          </p>
+        )}
       </div>
-      <div>
-        <Label>🥇 1순위 목표 직무 & 이유</Label>
-        <Hint>퍼포먼스 / 콘텐츠 / 브랜드 / 그로스 / CRM / AE 중 하나. DAY 2 강점과 연결해서 이유를 써주세요.</Hint>
-        <Area value={data.target_job_1} onChange={set('target_job_1')} rows={3}
-          placeholder={`직무명: ___\n이유: 나는 ___ 때문에 이 직무가 맞다고 생각합니다`} />
+
+      {tutorComment && (
+        <div className="bg-emerald-50 border-b border-emerald-100 px-4 py-3 shrink-0">
+          <p className="text-xs font-semibold text-emerald-700 mb-1">💬 튜터님 피드백</p>
+          <p className="text-sm text-emerald-800 leading-relaxed whitespace-pre-wrap">{tutorComment}</p>
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-2xl mx-auto px-4 py-5 space-y-5">
+
+          {/* ── DAY 2 ─────────────────────────────────────────── */}
+          <D23SectionHeader title="DAY 2 | 나는 어떤 마케터인가" bgClass="bg-blue-600" />
+
+          {/* 파트 1: 커리큘럼 체크 */}
+          <D23Card title="파트 1 | 커리큘럼 체크" time="30분">
+            <p className="text-xs text-slate-500">배운 영역 중 해당하는 칸에 체크하고, 한 줄 코멘트를 남겨보세요.</p>
+            <div className="overflow-x-auto -mx-1">
+              <table className="w-full text-xs border-collapse min-w-[480px]">
+                <thead>
+                  <tr className="bg-slate-50">
+                    <th className="text-left px-2 py-2 font-semibold text-slate-600 border-b border-slate-200 w-[38%]">영역</th>
+                    <th className="px-2 py-2 font-semibold text-slate-600 border-b border-slate-200 text-center w-16">흥미로웠다</th>
+                    <th className="px-2 py-2 font-semibold text-slate-600 border-b border-slate-200 text-center w-14">잘했다</th>
+                    <th className="px-2 py-2 font-semibold text-slate-600 border-b border-slate-200 text-center w-14">별로였다</th>
+                    <th className="px-2 py-2 font-semibold text-slate-600 border-b border-slate-200 text-left">한 줄 코멘트</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {CURRICULUM_AREAS.map((area, i) => (
+                    <tr key={area} className="border-b border-slate-100 last:border-0">
+                      <td className="px-2 py-2 text-slate-700 leading-snug">{area}</td>
+                      <td className="px-2 py-2">
+                        <CbCell checked={data.curriculum[i]?.interesting ?? false}
+                          onChange={v => setCurr(i, 'interesting', v)} />
+                      </td>
+                      <td className="px-2 py-2">
+                        <CbCell checked={data.curriculum[i]?.good_at ?? false}
+                          onChange={v => setCurr(i, 'good_at', v)} />
+                      </td>
+                      <td className="px-2 py-2">
+                        <CbCell checked={data.curriculum[i]?.boring ?? false}
+                          onChange={v => setCurr(i, 'boring', v)} />
+                      </td>
+                      <td className="px-2 py-2">
+                        <TdInput value={data.curriculum[i]?.comment ?? ''}
+                          onChange={e => setCurr(i, 'comment', e.target.value)} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </D23Card>
+
+          {/* 파트 2: 업무 스타일 */}
+          <D23Card title="파트 2 | 업무 스타일 체크" time="20분">
+            <p className="text-xs text-slate-500">1(A쪽) ~ 5(B쪽)로 점수를 선택하고, 한 줄 코멘트를 적어보세요.</p>
+            <div className="overflow-x-auto -mx-1">
+              <table className="w-full text-xs border-collapse min-w-[400px]">
+                <thead>
+                  <tr className="bg-slate-50">
+                    <th className="px-2 py-2 font-semibold text-slate-600 border-b border-slate-200 text-right w-[26%]">A</th>
+                    <th className="px-2 py-2 font-semibold text-slate-600 border-b border-slate-200 text-center w-20">점수 (1→5)</th>
+                    <th className="px-2 py-2 font-semibold text-slate-600 border-b border-slate-200 text-left w-[26%]">B</th>
+                    <th className="px-2 py-2 font-semibold text-slate-600 border-b border-slate-200 text-left">코멘트</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {WORK_STYLE_ITEMS.map((item, i) => (
+                    <tr key={i} className="border-b border-slate-100 last:border-0">
+                      <td className="px-2 py-2.5 text-slate-700 text-right">{item.a}</td>
+                      <td className="px-2 py-2.5 text-center">
+                        <select value={data.work_style[i]?.score ?? ''}
+                          onChange={e => setWs(i, 'score', e.target.value)}
+                          className="bg-slate-50 border border-slate-200 rounded text-xs px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-slate-300 w-12">
+                          <option value="">-</option>
+                          {['1','2','3','4','5'].map(v => <option key={v} value={v}>{v}</option>)}
+                        </select>
+                      </td>
+                      <td className="px-2 py-2.5 text-slate-700">{item.b}</td>
+                      <td className="px-2 py-2.5">
+                        <TdInput value={data.work_style[i]?.comment ?? ''}
+                          onChange={e => setWs(i, 'comment', e.target.value)} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </D23Card>
+
+          {/* 파트 3: 강점 & 한 문장 */}
+          <D23Card title="파트 3 | 강점 & 한 문장 정리" time="10분">
+            <D23Field label="💪 나의 강점 3가지" hint="「나는 __을 잘한다, 왜냐하면 __한 경험이 있기 때문이다」 형식으로 써보세요.">
+              <D23Callout>예: 「나는 감정을 건드리는 글을 잘 쓴다, 왜냐하면 콘텐츠 프로젝트에서 내 카피를 팀원들이 가장 많이 선택했기 때문이다」</D23Callout>
+              <D23Textarea value={data.strengths} onChange={setStr('strengths')} rows={6}
+                placeholder={`강점 1: 나는 __ 을 잘한다, 왜냐하면...\n\n강점 2: 나는 __ 을 잘한다, 왜냐하면...\n\n강점 3: 나는 __ 을 잘한다, 왜냐하면...`} />
+            </D23Field>
+            <D23Field label="✍️ 한 문장 완성" hint="아직 완벽하지 않아도 됩니다. 지금 이 순간의 나를 써보세요.">
+              <D23Textarea value={data.marketer_sentence} onChange={setStr('marketer_sentence')} rows={2}
+                placeholder="나는 ___한 마케터가 되고 싶다. 왜냐하면 나는 ___할 때 가장 살아있다고 느끼기 때문이다." />
+            </D23Field>
+          </D23Card>
+
+          {/* ── DAY 3 ─────────────────────────────────────────── */}
+          <D23SectionHeader title="DAY 3 | 나의 취업 방향 잡기" bgClass="bg-indigo-600" />
+
+          {/* 파트 1: 목표 직무 */}
+          <D23Card title="파트 1 | 목표 직무 방향">
+            <D23Field label="🥇 1순위 목표 직무 & 이유" hint="퍼포먼스 / 콘텐츠 / 브랜드 / 그로스 / CRM / AE 중 하나. DAY 2 강점과 연결해서 이유를 써주세요.">
+              <D23Textarea value={data.target_job_1} onChange={setStr('target_job_1')} rows={3}
+                placeholder={`직무명: ___\n이유: 나는 ___ 때문에 이 직무가 맞다고 생각합니다`} />
+            </D23Field>
+            <D23Field label="🥈 2순위 목표 직무 & 이유 (선택)">
+              <D23Textarea value={data.target_job_2} onChange={setStr('target_job_2')} rows={2}
+                placeholder="직무명 + 한 줄 이유 (없으면 비워도 됩니다)" />
+            </D23Field>
+          </D23Card>
+
+          {/* 파트 2: 관심 산업 */}
+          <D23Card title="파트 2 | 관심 산업">
+            <D23Field label="🏭 관심 산업 Top 3" hint="IT/SaaS · 이커머스 · 뷰티 · 식음료 · 패션 · 교육 · 헬스케어 · 게임 · 콘텐츠 · 금융 등">
+              <D23Textarea value={data.industries} onChange={setStr('industries')} rows={4}
+                placeholder={`1순위: (산업명) / 이유:\n2순위: (산업명) / 이유:\n3순위: (산업명) / 이유:`} />
+            </D23Field>
+            <D23Field label="🔗 DAY 1 경험과 연결하기" hint="내 경험 중 관심 산업과 연결될 수 있는 것이 있나요?">
+              <D23Textarea value={data.industry_connection} onChange={setStr('industry_connection')} rows={3}
+                placeholder="예: 이커머스에 관심 있는데, DAY 1에서 썼던 __한 경험이 연결될 것 같습니다." />
+            </D23Field>
+          </D23Card>
+
+          {/* 파트 3: 일하고 싶은 환경 */}
+          <D23Card title="파트 3 | 일하고 싶은 환경">
+            <p className="text-xs text-slate-500">각 항목에 O(맞다) / X(아니다)를 선택하고, 이유를 간단히 적어보세요.</p>
+
+            <div>
+              <p className="text-xs font-semibold text-slate-700 mb-2">대행사 vs 인하우스</p>
+              <div className="overflow-x-auto -mx-1">
+                <table className="w-full text-xs border-collapse border border-slate-100 rounded-xl overflow-hidden min-w-[360px]">
+                  <thead>
+                    <tr className="bg-slate-50">
+                      <th className="px-3 py-2 text-left font-semibold text-slate-600 border-b border-slate-200 w-20">유형</th>
+                      <th className="px-3 py-2 text-left font-semibold text-slate-600 border-b border-slate-200">특징</th>
+                      <th className="px-3 py-2 text-center font-semibold text-slate-600 border-b border-slate-200 w-16">O / X</th>
+                      <th className="px-3 py-2 text-left font-semibold text-slate-600 border-b border-slate-200">이유</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {WORK_ENV_TYPE_ITEMS.map((item, i) => (
+                      <tr key={item.label} className="border-b border-slate-100 last:border-0">
+                        <td className="px-3 py-2.5 font-medium text-slate-700">{item.label}</td>
+                        <td className="px-3 py-2.5 text-slate-500 text-[11px] leading-snug">{item.desc}</td>
+                        <td className="px-3 py-2.5">
+                          <OXButtons value={data.work_env_type[i]?.choice ?? ''}
+                            onChange={v => setWenv('work_env_type', i, 'choice', v)} />
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <TdInput value={data.work_env_type[i]?.reason ?? ''}
+                            onChange={e => setWenv('work_env_type', i, 'reason', e.target.value)} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-slate-700 mb-2">회사 규모</p>
+              <div className="overflow-x-auto -mx-1">
+                <table className="w-full text-xs border-collapse border border-slate-100 rounded-xl overflow-hidden min-w-[360px]">
+                  <thead>
+                    <tr className="bg-slate-50">
+                      <th className="px-3 py-2 text-left font-semibold text-slate-600 border-b border-slate-200 w-20">규모</th>
+                      <th className="px-3 py-2 text-left font-semibold text-slate-600 border-b border-slate-200">특징</th>
+                      <th className="px-3 py-2 text-center font-semibold text-slate-600 border-b border-slate-200 w-16">O / X</th>
+                      <th className="px-3 py-2 text-left font-semibold text-slate-600 border-b border-slate-200">이유</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {WORK_ENV_SIZE_ITEMS.map((item, i) => (
+                      <tr key={item.label} className="border-b border-slate-100 last:border-0">
+                        <td className="px-3 py-2.5 font-medium text-slate-700">{item.label}</td>
+                        <td className="px-3 py-2.5 text-slate-500 text-[11px] leading-snug">{item.desc}</td>
+                        <td className="px-3 py-2.5">
+                          <OXButtons value={data.work_env_size[i]?.choice ?? ''}
+                            onChange={v => setWenv('work_env_size', i, 'choice', v)} />
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <TdInput value={data.work_env_size[i]?.reason ?? ''}
+                            onChange={e => setWenv('work_env_size', i, 'reason', e.target.value)} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </D23Card>
+
+          {/* 파트 4: 목표 JD */}
+          <D23Card title="파트 4 | 목표 JD">
+            <D23Field label="📄 목표 JD 링크" hint="원티드·사람인에서 「이런 곳에서 일하고 싶다」는 느낌의 공고 하나를 찾아보세요.">
+              <input value={data.target_jd_url} onChange={setStr('target_jd_url')}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-200 mb-2"
+                placeholder="https://..." />
+              <D23Textarea value={data.target_jd_note} onChange={setStr('target_jd_note')} rows={4}
+                placeholder={`이 JD를 고른 이유:\n할 수 있을 것 같은 부분:\n아직 부족한 부분:`} />
+            </D23Field>
+          </D23Card>
+
+          {/* 파트 5: 취업 나침반 초안 */}
+          <D23Card title="파트 5 | 취업 나침반 초안">
+            <D23Field label="🧭 지금까지 내용을 압축해보세요" hint="아직 완벽하지 않아도 됩니다. 초안이에요.">
+              <D23Textarea value={data.compass_draft} onChange={setStr('compass_draft')} rows={5}
+                placeholder={`나는 (직무) 마케터로서\n(산업 / 회사 유형)에 지원하겠다.\n나의 강점은 (강점)이고,\n그 근거가 되는 경험은 (경험)이다.`} />
+            </D23Field>
+          </D23Card>
+
+        </div>
       </div>
-      <div>
-        <Label>🥈 2순위 목표 직무 & 이유 <span className="font-normal text-slate-400">(선택)</span></Label>
-        <Area value={data.target_job_2} onChange={set('target_job_2')} rows={2}
-          placeholder="직무명 + 한 줄 이유 (없으면 비워도 됩니다)" />
-      </div>
-      <div>
-        <Label>🏭 관심 산업 Top 3</Label>
-        <Hint>IT/SaaS · 이커머스 · 뷰티 · 식음료 · 패션 · 교육 · 헬스케어 · 게임 · 콘텐츠 · 금융 등</Hint>
-        <Area value={data.industries} onChange={set('industries')} rows={4}
-          placeholder={`1순위: (산업명) / 이유:\n2순위: (산업명) / 이유:\n3순위: (산업명) / 이유:`} />
-      </div>
-      <div>
-        <Label>🏢 일하고 싶은 환경</Label>
-        <Area value={data.work_environment} onChange={set('work_environment')} rows={3}
-          placeholder={`대행사 vs 인하우스: ___\n선호 회사 규모: 스타트업 / 중소 / 중견·대기업\n이유:`} />
-      </div>
-      <div>
-        <Label>📄 목표 JD 링크</Label>
-        <Hint>원티드·사람인에서 「이런 곳에서 일하고 싶다」는 느낌의 공고 하나를 찾아보세요.</Hint>
-        <input value={data.target_jd_url} onChange={set('target_jd_url')}
-          className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 mb-2"
-          placeholder="https://..." />
-        <Area value={data.target_jd_note} onChange={set('target_jd_note')} rows={4}
-          placeholder={`이 JD를 고른 이유:\n할 수 있을 것 같은 부분:\n아직 부족한 부분:`} />
-      </div>
-      <div>
-        <Label>🧭 나의 취업 나침반 초안</Label>
-        <Hint>지금까지 3일간 쓴 내용을 압축해 보세요.</Hint>
-        <Area value={data.compass_draft} onChange={set('compass_draft')} rows={4}
-          placeholder={`나는 (직무) 마케터로서\n(산업 / 회사 유형)에 지원하겠다.\n나의 강점은 (강점)이고,\n그 근거가 되는 경험은 (경험)이다.`} />
+
+      <div className="bg-white border-t border-slate-100 p-4 shrink-0">
+        <div className="max-w-2xl mx-auto">
+          {saveMsg && <p className="text-xs text-red-500 mb-2">{saveMsg}</p>}
+          <button onClick={handleSave} disabled={isPending}
+            className="w-full bg-slate-900 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-50">
+            {isPending ? '저장 중...' : '💾 저장하기'}
+          </button>
+        </div>
       </div>
     </div>
   )
