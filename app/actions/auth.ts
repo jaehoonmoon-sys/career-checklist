@@ -4,6 +4,13 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createAdminClient, supabase } from '@/lib/supabase'
 
+const COOKIE_OPTS = {
+  httpOnly: true,
+  path: '/',
+  maxAge: 60 * 60 * 24 * 30, // 30일
+  sameSite: 'lax' as const,
+}
+
 // 수강생 로그인
 export async function loginAsStudent(studentId: number, studentName: string) {
   const adminClient = createAdminClient()
@@ -16,9 +23,9 @@ export async function loginAsStudent(studentId: number, studentName: string) {
   })
 
   const cookieStore = await cookies()
-  cookieStore.set('cc_role', 'student', { httpOnly: true, path: '/' })
-  cookieStore.set('cc_student_id', String(studentId), { httpOnly: true, path: '/' })
-  cookieStore.set('cc_student_name', studentName, { httpOnly: true, path: '/' })
+  cookieStore.set('cc_role', 'student', COOKIE_OPTS)
+  cookieStore.set('cc_student_id', String(studentId), COOKIE_OPTS)
+  cookieStore.set('cc_student_name', studentName, COOKIE_OPTS)
 
   redirect('/student')
 }
@@ -46,7 +53,7 @@ export async function loginAsAdmin(password: string) {
   }
 
   const cookieStore = await cookies()
-  cookieStore.set('cc_role', 'admin', { httpOnly: true, path: '/' })
+  cookieStore.set('cc_role', 'admin', COOKIE_OPTS)
 
   redirect('/admin')
 }
