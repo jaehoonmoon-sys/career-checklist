@@ -1,6 +1,31 @@
 // 폼 설정 타입 & 기본값 정의
 // 관리자가 수정한 값은 cc_form_config 테이블에 저장되고, 없으면 이 기본값을 사용합니다.
 
+// ── DAY1 전용 타입 (섹션/필드 배열) ─────────────────────────────
+
+export type FieldType = 'textarea' | 'input' | 'subtitle'
+
+export type FieldDef = {
+  id: string
+  type?: FieldType       // default 'textarea'
+  label: string
+  desc?: string
+  example?: string
+  callout?: string
+  placeholder?: string
+  fixed: boolean         // true = 삭제 불가 (기본 필드)
+}
+
+export type SectionDef = {
+  id: string
+  title: string
+  time?: string
+  fields: FieldDef[]
+  fixed: boolean         // true = 삭제 불가 (기본 섹션)
+}
+
+// ── DAY2+3 전용 타입 (기존 FieldCfg 유지) ────────────────────────
+
 export type FieldCfg = {
   label: string
   desc?: string
@@ -10,30 +35,31 @@ export type FieldCfg = {
   callout?: string
 }
 
+// ── 전체 폼 설정 타입 ────────────────────────────────────────────
+
 export type FormConfig = {
   day1: {
     intro_callout: string
-    camp_basic_subtitle: string
-    camp_adv_subtitle: string
-    work: FieldCfg
-    school: FieldCfg
-    personal: FieldCfg
-    camp_basic_role: FieldCfg
-    camp_basic_made: FieldCfg
-    camp_basic_memory: FieldCfg
-    camp_adv_role: FieldCfg
-    camp_adv_made: FieldCfg
-    camp_adv_memory: FieldCfg
-    energy_flow: FieldCfg
-    good_at: FieldCfg
-    dislike: FieldCfg
-    today_discovery: FieldCfg
+    sections: SectionDef[]
   }
   day23: {
+    // 섹션/카드 제목 (편집 가능)
+    day2_title: string
+    day3_title: string
+    card_curriculum: string
+    card_workstyle: string
+    card_strengths: string
+    card_target_job: string
+    card_industries: string
+    card_work_env: string
+    card_target_jd: string
+    card_compass: string
+    // 테이블 데이터
     curriculum_areas: string[]
     work_style_items: { a: string; b: string }[]
     work_env_type_items: { label: string; desc: string }[]
     work_env_size_items: { label: string; desc: string }[]
+    // 필드 설정
     strengths: FieldCfg
     marketer_sentence: FieldCfg
     target_job_1: FieldCfg
@@ -46,75 +72,99 @@ export type FormConfig = {
   }
 }
 
+// ── 기본값 ────────────────────────────────────────────────────────
+
+const DEFAULT_DAY1_SECTIONS: SectionDef[] = [
+  {
+    id: 'part1',
+    title: '파트 1 | 캠프 전 나의 경험',
+    time: '20분',
+    fixed: true,
+    fields: [
+      {
+        id: 'work', fixed: true,
+        label: '1-1. 일 / 알바 / 직장 경험',
+        desc: '어떤 일을 했나요? 마케팅과 관련 없어도 됩니다.',
+        example: '카페 알바 → 고객 응대, 단골 파악 / 올리브영 → 제품 추천, 진열 / 콜센터 → 고객 불만 해결 / 식당 알바 → 주문 패턴 관찰, 메뉴 추천',
+      },
+      {
+        id: 'school', fixed: true,
+        label: '1-2. 학교 / 학습 경험',
+        desc: '전공, 수업, 동아리, 학생회, 팀 프로젝트 등',
+        example: '학보사 → 기사 작성, 인터뷰 / 축제 기획단 → 홍보물 제작, SNS 운영 / 경영 수업 → 마케팅 케이스 분석 / 조별 과제 → 기획, 발표 자료 제작',
+      },
+      {
+        id: 'personal', fixed: true,
+        label: '1-3. 개인 활동',
+        desc: 'SNS, 블로그, 유튜브, 커뮤니티, 취미, 여행 등 뭐든',
+        example: '인스타그램 운영 → 콘텐츠 기획, 해시태그 전략 / 독서 블로그 → 꾸준한 글쓰기 / 좋아하는 브랜드 덕질 → 브랜드 분석 / 여행 → 현지 마케팅 관찰',
+      },
+    ],
+  },
+  {
+    id: 'part2',
+    title: '파트 2 | 캠프에서 내가 한 것들',
+    time: '15분',
+    fixed: true,
+    fields: [
+      { id: 'camp_basic_header', type: 'subtitle', label: '🏕️ 기초 프로젝트 (AI 광고 콘텐츠)', fixed: true },
+      { id: 'camp_basic_role',   fixed: true, label: '2-1. 내가 맡은 역할', desc: '팀에서 어떤 역할을 담당했나요?' },
+      { id: 'camp_basic_made',   fixed: true, label: '2-2. 실제로 만든 것',  desc: '결과물로 무엇을 만들었나요?' },
+      { id: 'camp_basic_memory', fixed: true, label: '2-3. 기억에 남는 것',  desc: '이 프로젝트에서 가장 기억에 남는 순간이나 배운 점' },
+      { id: 'camp_adv_header',   type: 'subtitle', label: '🏕️ 심화 프로젝트 (광고 콘텐츠 제작)', fixed: true },
+      { id: 'camp_adv_role',     fixed: true, label: '2-4. 내가 맡은 역할', desc: '팀에서 어떤 역할을 담당했나요?' },
+      { id: 'camp_adv_made',     fixed: true, label: '2-5. 실제로 만든 것',  desc: '결과물로 무엇을 만들었나요?' },
+      { id: 'camp_adv_memory',   fixed: true, label: '2-6. 기억에 남는 것',  desc: '이 프로젝트에서 가장 기억에 남는 순간이나 배운 점' },
+    ],
+  },
+  {
+    id: 'part3',
+    title: '파트 3 | 에너지 체크',
+    time: '15분',
+    fixed: true,
+    fields: [
+      { id: 'energy_flow', fixed: true, label: '몰입했던 순간',        desc: '언제 시간 가는 줄 몰랐나요? (캠프 안팎 모두)' },
+      { id: 'good_at',     fixed: true, label: '잘한다고 느꼈던 순간', desc: '칭찬받았거나, 스스로 뿌듯했던 경험' },
+      {
+        id: 'dislike', fixed: true,
+        label: '하기 싫었던 것',
+        desc: '어떤 작업이 유독 힘들거나 피하고 싶었나요?',
+        callout: '→ 왜 그랬을 것 같나요? "싫다"는 감정의 이유를 쓰는 게 핵심입니다.\n"적성에 안 맞아서"보다 "숫자를 다루는 게 막막해서", "혼자 오래 앉아있는 게 힘들어서"처럼 구체적으로.',
+      },
+    ],
+  },
+  {
+    id: 'discovery',
+    title: '✅ 오늘의 발견',
+    time: '5분',
+    fixed: true,
+    fields: [
+      {
+        id: 'today_discovery', fixed: true,
+        label: '오늘의 발견',
+        placeholder: '오늘 적으면서 새롭게 발견한 나의 경험:\n\n「경험이라고 생각 못 했는데, 쓸 수 있겠다」 싶은 것:',
+      },
+    ],
+  },
+]
+
 export const DEFAULT_FORM_CONFIG: FormConfig = {
   day1: {
     intro_callout:
       '여기서부터가 진짜 취업 준비예요.\n\n방금 한 체크리스트는 가볍게 재미로 해보는 직무 탐색이었어요. 진짜 취업 준비는 나의 경험을 꺼내고 정리하는 것에서 시작합니다.\n\n"마케팅 경험이 없는데..."라고 생각할 수 있지만, 마케팅은 생활에 녹아있습니다. 올리브영 알바에서 고객에게 제품을 추천했다면 → 세일즈와 고객 이해입니다. 인스타에 올린 사진 한 장도, 친구에게 맛집 추천도 → 모두 커뮤니케이션입니다.\n\n일단 다 꺼내놓는 게 오늘의 목표입니다. 선별은 나중에 합니다.',
-    camp_basic_subtitle: '🏕️ 기초 프로젝트 (AI 광고 콘텐츠)',
-    camp_adv_subtitle: '🏕️ 심화 프로젝트 (광고 콘텐츠 제작)',
-    work: {
-      label: '1-1. 일 / 알바 / 직장 경험',
-      desc: '어떤 일을 했나요? 마케팅과 관련 없어도 됩니다.',
-      example:
-        '카페 알바 → 고객 응대, 단골 파악 / 올리브영 → 제품 추천, 진열 / 콜센터 → 고객 불만 해결 / 식당 알바 → 주문 패턴 관찰, 메뉴 추천',
-    },
-    school: {
-      label: '1-2. 학교 / 학습 경험',
-      desc: '전공, 수업, 동아리, 학생회, 팀 프로젝트 등',
-      example:
-        '학보사 → 기사 작성, 인터뷰 / 축제 기획단 → 홍보물 제작, SNS 운영 / 경영 수업 → 마케팅 케이스 분석 / 조별 과제 → 기획, 발표 자료 제작',
-    },
-    personal: {
-      label: '1-3. 개인 활동',
-      desc: 'SNS, 블로그, 유튜브, 커뮤니티, 취미, 여행 등 뭐든',
-      example:
-        '인스타그램 운영 → 콘텐츠 기획, 해시태그 전략 / 독서 블로그 → 꾸준한 글쓰기 / 좋아하는 브랜드 덕질 → 브랜드 분석 / 여행 → 현지 마케팅 관찰',
-    },
-    camp_basic_role: {
-      label: '2-1. 내가 맡은 역할',
-      desc: '팀에서 어떤 역할을 담당했나요?',
-    },
-    camp_basic_made: {
-      label: '2-2. 실제로 만든 것',
-      desc: '결과물로 무엇을 만들었나요?',
-    },
-    camp_basic_memory: {
-      label: '2-3. 기억에 남는 것',
-      desc: '이 프로젝트에서 가장 기억에 남는 순간이나 배운 점',
-    },
-    camp_adv_role: {
-      label: '2-4. 내가 맡은 역할',
-      desc: '팀에서 어떤 역할을 담당했나요?',
-    },
-    camp_adv_made: {
-      label: '2-5. 실제로 만든 것',
-      desc: '결과물로 무엇을 만들었나요?',
-    },
-    camp_adv_memory: {
-      label: '2-6. 기억에 남는 것',
-      desc: '이 프로젝트에서 가장 기억에 남는 순간이나 배운 점',
-    },
-    energy_flow: {
-      label: '몰입했던 순간',
-      desc: '언제 시간 가는 줄 몰랐나요? (캠프 안팎 모두)',
-    },
-    good_at: {
-      label: '잘한다고 느꼈던 순간',
-      desc: '칭찬받았거나, 스스로 뿌듯했던 경험',
-    },
-    dislike: {
-      label: '하기 싫었던 것',
-      desc: '어떤 작업이 유독 힘들거나 피하고 싶었나요?',
-      callout:
-        '→ 왜 그랬을 것 같나요? "싫다"는 감정의 이유를 쓰는 게 핵심입니다.\n"적성에 안 맞아서"보다 "숫자를 다루는 게 막막해서", "혼자 오래 앉아있는 게 힘들어서"처럼 구체적으로.',
-    },
-    today_discovery: {
-      label: '✅ 오늘의 발견',
-      placeholder:
-        '오늘 적으면서 새롭게 발견한 나의 경험:\n\n「경험이라고 생각 못 했는데, 쓸 수 있겠다」 싶은 것:',
-    },
+    sections: DEFAULT_DAY1_SECTIONS,
   },
   day23: {
+    day2_title: 'DAY 2 | 나는 어떤 마케터인가',
+    day3_title: 'DAY 3 | 나의 취업 방향 잡기',
+    card_curriculum: '파트 1 | 커리큘럼 체크',
+    card_workstyle:  '파트 2 | 업무 스타일 체크',
+    card_strengths:  '파트 3 | 강점 & 한 문장 정리',
+    card_target_job: '파트 1 | 목표 직무 방향',
+    card_industries: '파트 2 | 관심 산업',
+    card_work_env:   '파트 3 | 일하고 싶은 환경',
+    card_target_jd:  '파트 4 | 목표 JD',
+    card_compass:    '파트 5 | 취업 나침반 초안',
     curriculum_areas: [
       '광고 기획 (콘셉트, 타겟 설정)',
       'AI 활용 콘텐츠 제작',
@@ -186,24 +236,41 @@ export const DEFAULT_FORM_CONFIG: FormConfig = {
   },
 }
 
-// DB에 저장된 partial config와 기본값을 병합해서 완전한 FormConfig를 반환합니다.
+// ── 병합 헬퍼 ──────────────────────────────────────────────────────
+
 export function getEffectiveConfig(saved: Record<string, unknown>): FormConfig {
   const base = DEFAULT_FORM_CONFIG
+  const savedDay1  = (saved.day1  as Record<string, unknown> | undefined) ?? {}
+  const savedDay23 = (saved.day23 as Record<string, unknown> | undefined) ?? {}
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const merge = (def: any, over: any): any => {
+  const shallowMerge = (def: any, over: any): any => {
     if (!over || typeof over !== 'object' || Array.isArray(def)) {
-      return Array.isArray(def) && Array.isArray(over) ? over : over ?? def
+      return Array.isArray(def) && Array.isArray(over) ? over : (over ?? def)
     }
     const result = { ...def }
     for (const key of Object.keys(def)) {
-      if (key in over) result[key] = merge(def[key], over[key])
+      if (key in over) result[key] = shallowMerge(def[key], over[key])
     }
     return result
   }
 
   return {
-    day1:  merge(base.day1,  (saved as Record<string, unknown>).day1),
-    day23: merge(base.day23, (saved as Record<string, unknown>).day23),
+    day1: {
+      intro_callout: (savedDay1.intro_callout as string) ?? base.day1.intro_callout,
+      sections: Array.isArray(savedDay1.sections)
+        ? (savedDay1.sections as SectionDef[])
+        : base.day1.sections,
+    },
+    day23: shallowMerge(base.day23, savedDay23),
   }
 }
+
+// ── 유틸: 고정 필드 ID 목록 ────────────────────────────────────────
+
+export const FIXED_DAY1_IDS = new Set([
+  'work', 'school', 'personal',
+  'camp_basic_role', 'camp_basic_made', 'camp_basic_memory',
+  'camp_adv_role',   'camp_adv_made',   'camp_adv_memory',
+  'energy_flow', 'good_at', 'dislike', 'today_discovery',
+])

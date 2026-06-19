@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { Fragment, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { JOB_LABELS_FLAT, type JobType } from '@/lib/survey-questions'
 import { saveDay1, saveNextSteps } from '@/app/actions/checklist'
 import { type Day1Data, EMPTY_DAY1, NEXT_STEPS_ITEMS } from '@/lib/types'
-import { type FormConfig, DEFAULT_FORM_CONFIG } from '@/lib/form-config'
+import { type FormConfig, DEFAULT_FORM_CONFIG, FIXED_DAY1_IDS } from '@/lib/form-config'
 
 const JOB_COLORS: Record<JobType, string> = {
   performance: '#3b82f6', content: '#8b5cf6', brand: '#ec4899',
@@ -114,9 +114,7 @@ function ChoiceScreen({ topJob, topJobPct, preSelectedJob, onDay1, onClose }: {
   )
 }
 
-// ── DAY 1 폼 (노션 레이아웃 — 단일 스크롤) ──────────────────────
-
-type SetFn = (key: keyof Day1Data) => (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => void
+// ── DAY 1 폼 (섹션 기반 렌더링) ──────────────────────────────────
 
 export function Day1FormScreen({ topJob, sessionRound, initialDay1, formConfig, onComplete, onClose }: {
   topJob: JobType | null
@@ -132,8 +130,16 @@ export function Day1FormScreen({ topJob, sessionRound, initialDay1, formConfig, 
   const [saveMsg, setSaveMsg] = useState('')
   const [showNextSteps, setShowNextSteps] = useState(false)
 
-  const set: SetFn = (key) => (e) =>
-    setData(prev => ({ ...prev, [key]: e.target.value }))
+  const setFixed = (key: string) =>
+    (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) =>
+      setData(prev => ({ ...prev, [key]: e.target.value }))
+
+  const setExtra = (id: string) =>
+    (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) =>
+      setData(prev => ({
+        ...prev,
+        extra_fields: { ...(prev.extra_fields ?? {}), [id]: e.target.value },
+      }))
 
   const handleSave = () => {
     startTransition(async () => {
@@ -176,98 +182,54 @@ export function Day1FormScreen({ topJob, sessionRound, initialDay1, formConfig, 
             <p className="font-semibold mb-1.5">여기서부터가 진짜 취업 준비예요 <span className="font-normal text-xs">— 시작 전 읽기 (5분)</span></p>
             {topJob && (
               <p className="leading-relaxed mb-1">
-                결과로 <strong>{JOB_LABELS_FLAT[topJob]}</strong>이 나왔지만, 이건 단순 참고예요.
+                결과로 <strong>{JOB_LABELS_FLAT[topJob]}</strong>가 나왔지만, 이건 단순 참고예요.
               </p>
             )}
             <p className="leading-relaxed whitespace-pre-line">{cfg.intro_callout}</p>
           </D1Callout>
 
-          {/* 파트 1 */}
-          <D1SectionHeader title="파트 1 | 캠프 전 나의 경험" time="20분" />
+          {/* 섹션 반복 */}
+          {cfg.sections.map(section => (
+            <Fragment key={section.id}>
+              <D1SectionHeader title={section.title} time={section.time} />
 
-          <D1Field
-            label={cfg.work.label}
-            desc={cfg.work.desc}
-            example={cfg.work.example}
-          >
-            <D1Textarea value={data.work} onChange={set('work')} />
-          </D1Field>
+              {section.fields.map(field => {
+                if (field.type === 'subtitle') {
+                  return (
+                    <p key={field.id} className="text-xs font-semibold text-slate-500 -mt-4">
+                      {field.label}
+                    </p>
+                  )
+                }
 
-          <D1Field
-            label={cfg.school.label}
-            desc={cfg.school.desc}
-            example={cfg.school.example}
-          >
-            <D1Textarea value={data.school} onChange={set('school')} />
-          </D1Field>
+                const isFixed = FIXED_DAY1_IDS.has(field.id)
+                const val = isFixed
+                  ? ((data[field.id as keyof Day1Data] as string) ?? '')
+                  : (data.extra_fields?.[field.id] ?? '')
+                const handleChange = isFixed ? setFixed(field.id) : setExtra(field.id)
 
-          <D1Field
-            label={cfg.personal.label}
-            desc={cfg.personal.desc}
-            example={cfg.personal.example}
-          >
-            <D1Textarea value={data.personal} onChange={set('personal')} />
-          </D1Field>
-
-          {/* 파트 2 — 캠프 프로젝트 */}
-          <D1SectionHeader title="파트 2 | 캠프에서 내가 한 것들" time="15분" />
-
-          <p className="text-xs font-semibold text-slate-500 -mt-4">{cfg.camp_basic_subtitle}</p>
-
-          <D1Field label={cfg.camp_basic_role.label} desc={cfg.camp_basic_role.desc}>
-            <D1Textarea value={data.camp_basic_role} onChange={set('camp_basic_role')} />
-          </D1Field>
-
-          <D1Field label={cfg.camp_basic_made.label} desc={cfg.camp_basic_made.desc}>
-            <D1Textarea value={data.camp_basic_made} onChange={set('camp_basic_made')} />
-          </D1Field>
-
-          <D1Field label={cfg.camp_basic_memory.label} desc={cfg.camp_basic_memory.desc}>
-            <D1Textarea value={data.camp_basic_memory} onChange={set('camp_basic_memory')} />
-          </D1Field>
-
-          <p className="text-xs font-semibold text-slate-500">{cfg.camp_adv_subtitle}</p>
-
-          <D1Field label={cfg.camp_adv_role.label} desc={cfg.camp_adv_role.desc}>
-            <D1Textarea value={data.camp_adv_role} onChange={set('camp_adv_role')} />
-          </D1Field>
-
-          <D1Field label={cfg.camp_adv_made.label} desc={cfg.camp_adv_made.desc}>
-            <D1Textarea value={data.camp_adv_made} onChange={set('camp_adv_made')} />
-          </D1Field>
-
-          <D1Field label={cfg.camp_adv_memory.label} desc={cfg.camp_adv_memory.desc}>
-            <D1Textarea value={data.camp_adv_memory} onChange={set('camp_adv_memory')} />
-          </D1Field>
-
-          {/* 파트 3 — 에너지 체크 */}
-          <D1SectionHeader title="파트 3 | 에너지 체크" time="15분" />
-
-          <D1Field label={cfg.energy_flow.label} desc={cfg.energy_flow.desc}>
-            <D1Textarea value={data.energy_flow} onChange={set('energy_flow')} />
-          </D1Field>
-
-          <D1Field label={cfg.good_at.label} desc={cfg.good_at.desc}>
-            <D1Textarea value={data.good_at} onChange={set('good_at')} />
-          </D1Field>
-
-          <D1Field label={cfg.dislike.label} desc={cfg.dislike.desc}>
-            {cfg.dislike.callout && (
-              <D1Callout color="yellow" icon="💬">
-                <span className="whitespace-pre-line">{cfg.dislike.callout}</span>
-              </D1Callout>
-            )}
-            <D1Textarea value={data.dislike} onChange={set('dislike')} placeholder="어떤 것이 힘들었나요? (이유까지 작성)" />
-          </D1Field>
-
-          {/* 오늘의 발견 */}
-          <D1SectionHeader title="✅ 오늘의 발견" time="5분" />
-          <D1Textarea
-            value={data.today_discovery}
-            onChange={set('today_discovery')}
-            rows={5}
-            placeholder={cfg.today_discovery.placeholder ?? '오늘의 발견을 적어보세요'}
-          />
+                return (
+                  <D1Field key={field.id} label={field.label} desc={field.desc} example={field.example}>
+                    {field.callout && (
+                      <D1Callout color="yellow" icon="💬">
+                        <span className="whitespace-pre-line">{field.callout}</span>
+                      </D1Callout>
+                    )}
+                    {field.type === 'input' ? (
+                      <input
+                        value={val}
+                        onChange={handleChange}
+                        placeholder={field.placeholder ?? '여기에 작성하세요'}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:bg-white transition-colors"
+                      />
+                    ) : (
+                      <D1Textarea value={val} onChange={handleChange} placeholder={field.placeholder} />
+                    )}
+                  </D1Field>
+                )
+              })}
+            </Fragment>
+          ))}
 
         </div>
       </div>
@@ -288,12 +250,12 @@ export function Day1FormScreen({ topJob, sessionRound, initialDay1, formConfig, 
 
 // ── DAY1 폼 UI 헬퍼 ──────────────────────────────────────────────
 
-function D1SectionHeader({ title, time }: { title: string; time: string }) {
+function D1SectionHeader({ title, time }: { title: string; time?: string }) {
   return (
     <div className="flex items-center gap-3">
       <div className="flex-1 h-px bg-slate-200" />
       <p className="text-xs font-bold text-slate-500 whitespace-nowrap">
-        {title} <span className="font-normal text-slate-400">· {time}</span>
+        {title}{time && <span className="font-normal text-slate-400"> · {time}</span>}
       </p>
       <div className="flex-1 h-px bg-slate-200" />
     </div>
@@ -326,8 +288,8 @@ function D1Callout({ color, icon, children }: {
   children: React.ReactNode
 }) {
   const cls = {
-    blue:  'bg-blue-50 border border-blue-100 text-blue-800',
-    amber: 'bg-amber-50 border border-amber-100 text-amber-800',
+    blue:   'bg-blue-50 border border-blue-100 text-blue-800',
+    amber:  'bg-amber-50 border border-amber-100 text-amber-800',
     yellow: 'bg-yellow-50 border border-yellow-100 text-yellow-800',
   }[color]
   return (

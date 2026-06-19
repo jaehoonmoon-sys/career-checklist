@@ -9,7 +9,7 @@ import {
   EMPTY_DAY23, EMPTY_DAY5,
   type CurrRow, type WsRow, type WenvRow,
 } from '@/lib/types'
-import { type FormConfig, DEFAULT_FORM_CONFIG } from '@/lib/form-config'
+import { type FormConfig, DEFAULT_FORM_CONFIG, FIXED_DAY1_IDS } from '@/lib/form-config'
 import CompetencyChecklist from './CompetencyChecklist'
 import { Day1FormScreen, NextStepsChecklist } from './PostSaveFlow'
 
@@ -21,21 +21,6 @@ const JOB_COLORS: Record<JobType, string> = {
 
 const JOB_ORDER: JobType[] = ['performance', 'content', 'brand', 'growth', 'crm', 'ae']
 
-const DAY1_FIELDS: { key: keyof Day1Data; label: string }[] = [
-  { key: 'work',              label: '💼 일/알바/직장 경험' },
-  { key: 'school',            label: '🎓 학교/학습 경험' },
-  { key: 'personal',          label: '🌱 개인 활동' },
-  { key: 'camp_basic_role',   label: '🏕️ 기초 프로젝트 — 내가 맡은 역할' },
-  { key: 'camp_basic_made',   label: '🏕️ 기초 프로젝트 — 실제로 만든 것' },
-  { key: 'camp_basic_memory', label: '🏕️ 기초 프로젝트 — 기억에 남는 것' },
-  { key: 'camp_adv_role',     label: '🏕️ 심화 프로젝트 — 내가 맡은 역할' },
-  { key: 'camp_adv_made',     label: '🏕️ 심화 프로젝트 — 실제로 만든 것' },
-  { key: 'camp_adv_memory',   label: '🏕️ 심화 프로젝트 — 기억에 남는 것' },
-  { key: 'energy_flow',       label: '⚡ 몰입했던 순간' },
-  { key: 'good_at',           label: '✨ 잘한다고 느꼈던 순간' },
-  { key: 'dislike',           label: '😣 하기 싫었던 것' },
-  { key: 'today_discovery',   label: '✅ 오늘의 발견' },
-]
 
 type Props = {
   stage: number
@@ -153,19 +138,26 @@ export default function CareerJourneyView({
               </div>
 
               <div className="space-y-4">
-                {DAY1_FIELDS.map(({ key, label }) => {
-                  const val = day1Data[key] as string
-                  return (
-                    <div key={key}>
-                      <p className="text-xs font-semibold text-slate-400 mb-1">{label}</p>
-                      {val?.trim() ? (
-                        <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{val}</p>
-                      ) : (
-                        <p className="text-sm text-slate-300 italic">작성하지 않았어요</p>
-                      )}
-                    </div>
-                  )
-                })}
+                {(formConfig?.day1 ?? DEFAULT_FORM_CONFIG.day1).sections.flatMap(section =>
+                  section.fields
+                    .filter(f => f.type !== 'subtitle')
+                    .map(f => ({
+                      id: f.id,
+                      label: f.label,
+                      val: FIXED_DAY1_IDS.has(f.id)
+                        ? ((day1Data[f.id as keyof Day1Data] as string) ?? '')
+                        : (day1Data.extra_fields?.[f.id] ?? ''),
+                    }))
+                ).map(({ id, label, val }) => (
+                  <div key={id}>
+                    <p className="text-xs font-semibold text-slate-400 mb-1">{label}</p>
+                    {val?.trim() ? (
+                      <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{val}</p>
+                    ) : (
+                      <p className="text-sm text-slate-300 italic">작성하지 않았어요</p>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -320,7 +312,7 @@ function Area({ value, onChange, placeholder, rows = 4 }: {
   )
 }
 
-function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutorComment, formConfig, onComplete, onRollbackRequest }: {
+export function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutorComment, formConfig, onComplete, onRollbackRequest }: {
   studentName: string
   sessionRound: number
   topJob: JobType | null
@@ -401,10 +393,10 @@ function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutor
         <div className="max-w-2xl mx-auto px-4 py-5 space-y-5">
 
           {/* ── DAY 2 ─────────────────────────────────────────── */}
-          <D23SectionHeader title="DAY 2 | 나는 어떤 마케터인가" bgClass="bg-blue-600" />
+          <D23SectionHeader title={cfg.day2_title} bgClass="bg-blue-600" />
 
           {/* 파트 1: 커리큘럼 체크 */}
-          <D23Card title="파트 1 | 커리큘럼 체크" time="30분">
+          <D23Card title={cfg.card_curriculum} time="30분">
             <p className="text-xs text-slate-500">배운 영역 중 해당하는 칸에 체크하고, 한 줄 코멘트를 남겨보세요.</p>
             <div className="overflow-x-auto -mx-1">
               <table className="w-full text-xs border-collapse min-w-[480px]">
@@ -445,7 +437,7 @@ function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutor
           </D23Card>
 
           {/* 파트 2: 업무 스타일 */}
-          <D23Card title="파트 2 | 업무 스타일 체크" time="20분">
+          <D23Card title={cfg.card_workstyle} time="20분">
             <p className="text-xs text-slate-500">1(A쪽) ~ 5(B쪽)로 점수를 선택하고, 한 줄 코멘트를 적어보세요.</p>
             <div className="overflow-x-auto -mx-1">
               <table className="w-full text-xs border-collapse min-w-[400px]">
@@ -482,7 +474,7 @@ function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutor
           </D23Card>
 
           {/* 파트 3: 강점 & 한 문장 */}
-          <D23Card title="파트 3 | 강점 & 한 문장 정리" time="10분">
+          <D23Card title={cfg.card_strengths} time="10분">
             <D23Field label={cfg.strengths.label} hint={cfg.strengths.hint}>
               {cfg.strengths.callout && <D23Callout>{cfg.strengths.callout}</D23Callout>}
               <D23Textarea value={data.strengths} onChange={setStr('strengths')} rows={6}
@@ -495,10 +487,10 @@ function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutor
           </D23Card>
 
           {/* ── DAY 3 ─────────────────────────────────────────── */}
-          <D23SectionHeader title="DAY 3 | 나의 취업 방향 잡기" bgClass="bg-indigo-600" />
+          <D23SectionHeader title={cfg.day3_title} bgClass="bg-indigo-600" />
 
           {/* 파트 1: 목표 직무 */}
-          <D23Card title="파트 1 | 목표 직무 방향">
+          <D23Card title={cfg.card_target_job}>
             <D23Field label={cfg.target_job_1.label} hint={cfg.target_job_1.hint}>
               <D23Textarea value={data.target_job_1} onChange={setStr('target_job_1')} rows={3}
                 placeholder={cfg.target_job_1.placeholder} />
@@ -510,7 +502,7 @@ function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutor
           </D23Card>
 
           {/* 파트 2: 관심 산업 */}
-          <D23Card title="파트 2 | 관심 산업">
+          <D23Card title={cfg.card_industries}>
             <D23Field label={cfg.industries.label} hint={cfg.industries.hint}>
               <D23Textarea value={data.industries} onChange={setStr('industries')} rows={4}
                 placeholder={cfg.industries.placeholder} />
@@ -522,7 +514,7 @@ function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutor
           </D23Card>
 
           {/* 파트 3: 일하고 싶은 환경 */}
-          <D23Card title="파트 3 | 일하고 싶은 환경">
+          <D23Card title={cfg.card_work_env}>
             <p className="text-xs text-slate-500">각 항목에 O(맞다) / X(아니다)를 선택하고, 이유를 간단히 적어보세요.</p>
 
             <div>
@@ -591,7 +583,7 @@ function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutor
           </D23Card>
 
           {/* 파트 4: 목표 JD */}
-          <D23Card title="파트 4 | 목표 JD">
+          <D23Card title={cfg.card_target_jd}>
             <D23Field label={cfg.target_jd_url.label} hint={cfg.target_jd_url.hint}>
               <input value={data.target_jd_url} onChange={setStr('target_jd_url')}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-200 mb-2"
@@ -602,7 +594,7 @@ function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutor
           </D23Card>
 
           {/* 파트 5: 취업 나침반 초안 */}
-          <D23Card title="파트 5 | 취업 나침반 초안">
+          <D23Card title={cfg.card_compass}>
             <D23Field label={cfg.compass_draft.label} hint={cfg.compass_draft.hint}>
               <D23Textarea value={data.compass_draft} onChange={setStr('compass_draft')} rows={5}
                 placeholder={cfg.compass_draft.placeholder} />

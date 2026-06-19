@@ -49,6 +49,7 @@ export type Day1Data = {
   dislike: string        // 하기 싫었던 것 + 이유
   today_discovery: string
   next_steps: Record<string, boolean>  // 다음 단계 자기 체크
+  extra_fields: Record<string, string> // 관리자가 추가한 커스텀 필드
 }
 
 export const EMPTY_DAY1: Day1Data = {
@@ -57,6 +58,7 @@ export const EMPTY_DAY1: Day1Data = {
   camp_adv_role: '', camp_adv_made: '', camp_adv_memory: '',
   energy_flow: '', good_at: '', dislike: '', today_discovery: '',
   next_steps: {},
+  extra_fields: {},
 }
 
 // ── DAY 2 | 커리큘럼 체크 테이블 ─────────────────────────────────
