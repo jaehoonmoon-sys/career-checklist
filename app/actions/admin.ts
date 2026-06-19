@@ -143,28 +143,63 @@ export async function saveTutorComment(
   sessionRound: number,
   commentNum: 1 | 2,
   comment: string,
-  currentStage?: number
 ): Promise<{ success: boolean; error?: string }> {
   const adminClient = createAdminClient()
 
-  const targetStage = commentNum === 1 ? 2 : 4
-  // 현재 stage가 목표 stage보다 낮을 때만 stage 진행 (수정 시 stage 후퇴 방지)
-  const shouldAdvance = currentStage === undefined || currentStage < targetStage
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updateData: Record<string, any> = {
-    [commentNum === 1 ? 'tutor_comment_1' : 'tutor_comment_2']: comment.trim(),
-  }
-  if (shouldAdvance) updateData.stage = targetStage
-
+  const field = commentNum === 1 ? 'tutor_comment_1' : 'tutor_comment_2'
   const { error } = await adminClient
     .from('cc_checklist_responses')
-    .update(updateData)
+    .update({ [field]: comment.trim() })
     .eq('student_id', studentId)
     .eq('session_round', sessionRound)
 
   if (error) return { success: false, error: '저장 중 오류가 발생했습니다.' }
 
   revalidatePath('/admin')
+  return { success: true }
+}
+
+export async function publishTutorComment(
+  studentId: number,
+  sessionRound: number,
+  commentNum: 1 | 2,
+): Promise<{ success: boolean; error?: string }> {
+  const adminClient = createAdminClient()
+
+  const targetStage = commentNum === 1 ? 2 : 4
+  const { error } = await adminClient
+    .from('cc_checklist_responses')
+    .update({ stage: targetStage })
+    .eq('student_id', studentId)
+    .eq('session_round', sessionRound)
+    .lt('stage', targetStage)
+
+  if (error) return { success: false, error: '공개 처리 중 오류가 발생했습니다.' }
+
+  revalidatePath('/admin')
+  revalidatePath('/student')
+  return { success: true }
+}
+
+export async function unpublishTutorComment(
+  studentId: number,
+  sessionRound: number,
+  commentNum: 1 | 2,
+): Promise<{ success: boolean; error?: string }> {
+  const adminClient = createAdminClient()
+
+  const prevStage = commentNum === 1 ? 1 : 3
+  const exactStage = commentNum === 1 ? 2 : 4
+  const { error } = await adminClient
+    .from('cc_checklist_responses')
+    .update({ stage: prevStage })
+    .eq('student_id', studentId)
+    .eq('session_round', sessionRound)
+    .eq('stage', exactStage)
+
+  if (error) return { success: false, error: '숨김 처리 중 오류가 발생했습니다.' }
+
+  revalidatePath('/admin')
+  revalidatePath('/student')
   return { success: true }
 }

@@ -10,7 +10,7 @@ import {
   QUESTIONS, CATEGORIES, ANSWER_OPTIONS,
   JOB_LABELS, JOB_LABELS_FLAT, type JobType,
 } from '@/lib/survey-questions'
-import { saveTutorComment } from '@/app/actions/admin'
+import { saveTutorComment, publishTutorComment, unpublishTutorComment } from '@/app/actions/admin'
 import type { StudentRow } from '@/app/actions/admin'
 import { NEXT_STEPS_ITEMS } from '@/lib/types'
 
@@ -304,10 +304,12 @@ function JourneyView({ student }: { student: StudentRow }) {
   const [comment1, setComment1] = useState(student.tutor_comment_1 ?? '')
   const [editing1, setEditing1] = useState(!student.tutor_comment_1)
   const [saveResult1, setSaveResult1] = useState<{ ok?: boolean; error?: string } | null>(null)
+  const [confirm1, setConfirm1] = useState<'publish' | 'unpublish' | null>(null)
 
   const [comment2, setComment2] = useState(student.tutor_comment_2 ?? '')
   const [editing2, setEditing2] = useState(!student.tutor_comment_2)
   const [saveResult2, setSaveResult2] = useState<{ ok?: boolean; error?: string } | null>(null)
+  const [confirm2, setConfirm2] = useState<'publish' | 'unpublish' | null>(null)
 
   const currentStage = student.stage ?? 0
 
@@ -315,14 +317,36 @@ function JourneyView({ student }: { student: StudentRow }) {
     const val = num === 1 ? comment1 : comment2
     if (!val.trim()) return
     startTransition(async () => {
-      const result = await saveTutorComment(student.id, 1, num, val, currentStage)
+      const result = await saveTutorComment(student.id, 1, num, val)
       if (result.success) {
         if (num === 1) { setSaveResult1({ ok: true }); setEditing1(false) }
         else { setSaveResult2({ ok: true }); setEditing2(false) }
-        setTimeout(() => { router.refresh() }, 1000)
+        setTimeout(() => { router.refresh() }, 800)
       } else {
         if (num === 1) setSaveResult1({ error: result.error })
         else setSaveResult2({ error: result.error })
+      }
+    })
+  }
+
+  const handlePublish = (num: 1 | 2) => {
+    startTransition(async () => {
+      const result = await publishTutorComment(student.id, 1, num)
+      if (result.success) {
+        if (num === 1) setConfirm1(null)
+        else setConfirm2(null)
+        setTimeout(() => { router.refresh() }, 500)
+      }
+    })
+  }
+
+  const handleUnpublish = (num: 1 | 2) => {
+    startTransition(async () => {
+      const result = await unpublishTutorComment(student.id, 1, num)
+      if (result.success) {
+        if (num === 1) setConfirm1(null)
+        else setConfirm2(null)
+        setTimeout(() => { router.refresh() }, 500)
       }
     })
   }
@@ -360,12 +384,12 @@ function JourneyView({ student }: { student: StudentRow }) {
         </div>
       </div>
 
-      {/* 1차 면담 코멘트 (stage >= 1) */}
+      {/* 1차 면담 메모 (stage >= 1) */}
       {currentStage >= 1 && (
         <div className={`bg-white rounded-2xl border p-4 ${editing1 ? 'border-orange-100' : 'border-slate-100'}`}>
           <div className="flex items-center justify-between mb-1">
             <p className={`text-xs font-semibold ${editing1 ? 'text-orange-600' : 'text-slate-600'}`}>
-              💬 1차 면담 코멘트
+              📝 1차 면담 메모
             </p>
             {!editing1 && (
               <button onClick={() => setEditing1(true)} className="text-xs text-slate-400 hover:text-slate-600 underline">
@@ -375,7 +399,7 @@ function JourneyView({ student }: { student: StudentRow }) {
           </div>
           {editing1 ? (
             <>
-              <p className="text-xs text-slate-400 mb-3">코멘트를 저장하면 수강생에게 DAY 2+3이 열립니다.</p>
+              <p className="text-xs text-slate-400 mb-3">메모 용도입니다. 저장 후 수강생에게 공개할 수 있습니다.</p>
               <textarea
                 value={comment1}
                 onChange={e => setComment1(e.target.value)}
@@ -385,7 +409,7 @@ function JourneyView({ student }: { student: StudentRow }) {
               />
               {saveResult1 && (
                 <p className={`text-xs mb-2 ${saveResult1.ok ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {saveResult1.ok ? '✓ 저장됐어요! 페이지가 새로고침됩니다.' : saveResult1.error}
+                  {saveResult1.ok ? '✓ 저장됐어요.' : saveResult1.error}
                 </p>
               )}
               <div className="flex gap-2">
@@ -399,22 +423,75 @@ function JourneyView({ student }: { student: StudentRow }) {
                   onClick={() => handleSave(1)}
                   disabled={isPending || !comment1.trim()}
                   className="flex-1 bg-slate-900 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-40">
-                  {isPending ? '저장 중...' : student.tutor_comment_1 ? '수정 저장' : '코멘트 저장 → DAY 2+3 열기'}
+                  {isPending ? '저장 중...' : '저장'}
                 </button>
               </div>
             </>
           ) : (
             <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{comment1}</p>
           )}
+
+          {/* 공개 제어 */}
+          {!editing1 && comment1 && (
+            <div className="mt-3 pt-3 border-t border-slate-100">
+              {currentStage < 2 ? (
+                confirm1 === 'publish' ? (
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 space-y-2">
+                    <p className="text-xs font-medium text-blue-800">이 메모를 수강생에게 공개하겠습니까?</p>
+                    <p className="text-xs text-blue-600">수강생에게 DAY 2+3 단계가 열립니다.</p>
+                    <div className="flex gap-2 pt-1">
+                      <button onClick={() => handlePublish(1)} disabled={isPending}
+                        className="flex-1 bg-blue-600 text-white text-xs font-semibold py-2 rounded-lg disabled:opacity-50">
+                        예, 공개하기
+                      </button>
+                      <button onClick={() => setConfirm1(null)}
+                        className="flex-1 border border-slate-200 text-slate-600 text-xs font-semibold py-2 rounded-lg hover:bg-slate-50">
+                        취소
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setConfirm1('publish')}
+                    className="w-full border-2 border-blue-200 text-blue-700 text-xs font-semibold py-2.5 rounded-xl hover:bg-blue-50 transition-colors">
+                    👁 수강생에게 보이도록 하기
+                  </button>
+                )
+              ) : (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-emerald-600 font-medium">✓ 수강생에게 공개됨</span>
+                  {currentStage === 2 && (
+                    confirm1 === 'unpublish' ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-amber-700">숨기겠습니까?</span>
+                        <button onClick={() => handleUnpublish(1)} disabled={isPending}
+                          className="text-xs text-white bg-amber-500 px-2.5 py-1 rounded-lg disabled:opacity-50">
+                          확인
+                        </button>
+                        <button onClick={() => setConfirm1(null)}
+                          className="text-xs text-slate-500 border border-slate-200 px-2.5 py-1 rounded-lg hover:bg-slate-50">
+                          취소
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirm1('unpublish')}
+                        className="text-xs text-slate-400 hover:text-amber-600 underline transition-colors">
+                        숨기기
+                      </button>
+                    )
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
-      {/* 2차 면담 코멘트 (stage >= 3) */}
+      {/* 2차 면담 메모 (stage >= 3) */}
       {currentStage >= 3 && (
         <div className={`bg-white rounded-2xl border p-4 ${editing2 ? 'border-orange-100' : 'border-slate-100'}`}>
           <div className="flex items-center justify-between mb-1">
             <p className={`text-xs font-semibold ${editing2 ? 'text-orange-600' : 'text-slate-600'}`}>
-              💬 2차 면담 코멘트
+              📝 2차 면담 메모
             </p>
             {!editing2 && (
               <button onClick={() => setEditing2(true)} className="text-xs text-slate-400 hover:text-slate-600 underline">
@@ -424,7 +501,7 @@ function JourneyView({ student }: { student: StudentRow }) {
           </div>
           {editing2 ? (
             <>
-              <p className="text-xs text-slate-400 mb-3">코멘트를 저장하면 수강생에게 최종 정리(DAY 5)가 열립니다.</p>
+              <p className="text-xs text-slate-400 mb-3">메모 용도입니다. 저장 후 수강생에게 공개할 수 있습니다.</p>
               <textarea
                 value={comment2}
                 onChange={e => setComment2(e.target.value)}
@@ -434,7 +511,7 @@ function JourneyView({ student }: { student: StudentRow }) {
               />
               {saveResult2 && (
                 <p className={`text-xs mb-2 ${saveResult2.ok ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {saveResult2.ok ? '✓ 저장됐어요! 페이지가 새로고침됩니다.' : saveResult2.error}
+                  {saveResult2.ok ? '✓ 저장됐어요.' : saveResult2.error}
                 </p>
               )}
               <div className="flex gap-2">
@@ -448,12 +525,65 @@ function JourneyView({ student }: { student: StudentRow }) {
                   onClick={() => handleSave(2)}
                   disabled={isPending || !comment2.trim()}
                   className="flex-1 bg-slate-900 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-40">
-                  {isPending ? '저장 중...' : student.tutor_comment_2 ? '수정 저장' : '코멘트 저장 → DAY 5 열기'}
+                  {isPending ? '저장 중...' : '저장'}
                 </button>
               </div>
             </>
           ) : (
             <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{comment2}</p>
+          )}
+
+          {/* 공개 제어 */}
+          {!editing2 && comment2 && (
+            <div className="mt-3 pt-3 border-t border-slate-100">
+              {currentStage < 4 ? (
+                confirm2 === 'publish' ? (
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 space-y-2">
+                    <p className="text-xs font-medium text-blue-800">이 메모를 수강생에게 공개하겠습니까?</p>
+                    <p className="text-xs text-blue-600">수강생에게 최종 정리(DAY 5) 단계가 열립니다.</p>
+                    <div className="flex gap-2 pt-1">
+                      <button onClick={() => handlePublish(2)} disabled={isPending}
+                        className="flex-1 bg-blue-600 text-white text-xs font-semibold py-2 rounded-lg disabled:opacity-50">
+                        예, 공개하기
+                      </button>
+                      <button onClick={() => setConfirm2(null)}
+                        className="flex-1 border border-slate-200 text-slate-600 text-xs font-semibold py-2 rounded-lg hover:bg-slate-50">
+                        취소
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setConfirm2('publish')}
+                    className="w-full border-2 border-blue-200 text-blue-700 text-xs font-semibold py-2.5 rounded-xl hover:bg-blue-50 transition-colors">
+                    👁 수강생에게 보이도록 하기
+                  </button>
+                )
+              ) : (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-emerald-600 font-medium">✓ 수강생에게 공개됨</span>
+                  {currentStage === 4 && (
+                    confirm2 === 'unpublish' ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-amber-700">숨기겠습니까?</span>
+                        <button onClick={() => handleUnpublish(2)} disabled={isPending}
+                          className="text-xs text-white bg-amber-500 px-2.5 py-1 rounded-lg disabled:opacity-50">
+                          확인
+                        </button>
+                        <button onClick={() => setConfirm2(null)}
+                          className="text-xs text-slate-500 border border-slate-200 px-2.5 py-1 rounded-lg hover:bg-slate-50">
+                          취소
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirm2('unpublish')}
+                        className="text-xs text-slate-400 hover:text-amber-600 underline transition-colors">
+                        숨기기
+                      </button>
+                    )
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
