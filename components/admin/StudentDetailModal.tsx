@@ -54,6 +54,7 @@ export default function StudentDetailModal({ student, onClose }: Props) {
   const { answers, top_job, job_pcts, student_name, answered_count, cohort, stage } = student
   const chartColor = top_job ? JOB_COLORS[top_job] : '#94a3b8'
   const [tab, setTab] = useState<'checklist' | 'journey'>('checklist')
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const hasJourneyData = (stage ?? 0) > 0 || !!student.day1_data || !!student.experiences
 
   const radarData = JOB_ORDER.map(job => ({
@@ -128,7 +129,7 @@ export default function StudentDetailModal({ student, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
-      <div className="relative ml-auto w-full max-w-4xl bg-slate-50 flex flex-col shadow-2xl">
+      <div className={`relative bg-slate-50 flex flex-col shadow-2xl transition-all duration-200 ${isFullscreen ? 'w-full' : 'ml-auto w-full max-w-4xl'}`}>
         {/* 헤더 */}
         <div className="bg-white border-b border-slate-100 px-5 py-3.5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -149,10 +150,25 @@ export default function StudentDetailModal({ student, onClose }: Props) {
               관리자 보기
             </span>
           </div>
-          <button onClick={onClose}
-            className="shrink-0 ml-3 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
-            ✕
-          </button>
+          <div className="flex items-center gap-1 shrink-0 ml-3">
+            <button onClick={() => setIsFullscreen(prev => !prev)}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              title={isFullscreen ? '축소' : '전체 화면'}>
+              {isFullscreen ? (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5M15 15l5.25 5.25" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                </svg>
+              )}
+            </button>
+            <button onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+              ✕
+            </button>
+          </div>
         </div>
 
         {/* 탭 */}
@@ -177,7 +193,7 @@ export default function StudentDetailModal({ student, onClose }: Props) {
         {/* 컨텐츠 */}
         <div className="flex-1 overflow-y-auto">
           {tab === 'journey' && (
-            <div className="px-5 py-5 max-w-2xl space-y-5">
+            <div className={`px-5 py-5 space-y-5 ${isFullscreen ? 'max-w-5xl' : 'max-w-2xl'}`}>
               <JourneyView student={student} />
             </div>
           )}
@@ -388,7 +404,7 @@ function JourneyView({ student }: { student: StudentRow }) {
               </div>
             </>
           ) : (
-            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{comment1}</p>
+            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{comment1}</p>
           )}
         </div>
       )}
@@ -437,7 +453,7 @@ function JourneyView({ student }: { student: StudentRow }) {
               </div>
             </>
           ) : (
-            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{comment2}</p>
+            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{comment2}</p>
           )}
         </div>
       )}
@@ -502,7 +518,7 @@ function JourneyView({ student }: { student: StudentRow }) {
             .map(([k, v]) => (
               <div key={k} className="mb-3 last:mb-0">
                 <p className="text-xs font-semibold text-slate-500 mb-1">{k}</p>
-                <div className="bg-slate-50 rounded-xl px-3 py-2.5 text-sm text-slate-700 whitespace-pre-wrap">
+                <div className="bg-slate-50 rounded-xl px-3 py-2.5 text-sm text-slate-700 whitespace-pre-wrap break-words">
                   {v}
                 </div>
               </div>
@@ -611,7 +627,7 @@ function DayDataBlock({ title, fields, data }: {
                 {data[f.key]}
               </a>
             ) : (
-              <div className="bg-slate-50 rounded-xl px-3 py-2.5 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+              <div className="bg-slate-50 rounded-xl px-3 py-2.5 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">
                 {data[f.key]}
               </div>
             )}
