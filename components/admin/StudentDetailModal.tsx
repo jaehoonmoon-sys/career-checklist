@@ -10,7 +10,7 @@ import {
   QUESTIONS, CATEGORIES, ANSWER_OPTIONS,
   JOB_LABELS, JOB_LABELS_FLAT, type JobType,
 } from '@/lib/survey-questions'
-import { saveTutorComment, publishTutorComment, unpublishTutorComment } from '@/app/actions/admin'
+import { saveTutorComment, publishTutorComment, unpublishTutorComment, openDayAccess, closeDayAccess } from '@/app/actions/admin'
 import type { StudentRow } from '@/app/actions/admin'
 import { NEXT_STEPS_ITEMS } from '@/lib/types'
 
@@ -311,6 +311,12 @@ function JourneyView({ student }: { student: StudentRow }) {
   const [saveResult2, setSaveResult2] = useState<{ ok?: boolean; error?: string } | null>(null)
   const [confirm2, setConfirm2] = useState<'publish' | 'unpublish' | null>(null)
 
+  const [stageConfirm, setStageConfirm] = useState<{
+    day: '23' | '5'
+    action: 'open' | 'close'
+    step: 1 | 2
+  } | null>(null)
+
   const currentStage = student.stage ?? 0
 
   const handleSave = (num: 1 | 2) => {
@@ -325,6 +331,18 @@ function JourneyView({ student }: { student: StudentRow }) {
       } else {
         if (num === 1) setSaveResult1({ error: result.error })
         else setSaveResult2({ error: result.error })
+      }
+    })
+  }
+
+  const handleStageChange = (day: '23' | '5', action: 'open' | 'close') => {
+    startTransition(async () => {
+      const result = action === 'open'
+        ? await openDayAccess(student.id, 1, day)
+        : await closeDayAccess(student.id, 1, day)
+      if (result.success) {
+        setStageConfirm(null)
+        setTimeout(() => { router.refresh() }, 500)
       }
     })
   }
@@ -383,6 +401,93 @@ function JourneyView({ student }: { student: StudentRow }) {
           })}
         </div>
       </div>
+
+      {/* 단계 접근 제어 */}
+      {currentStage >= 1 && currentStage <= 4 && (
+        <div className="bg-white rounded-2xl border border-amber-100 p-4">
+          <p className="text-xs font-semibold text-amber-700 mb-3">🔑 단계 접근 제어</p>
+
+          {stageConfirm ? (
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
+                {stageConfirm.step === 1 ? '확인 1/2' : '확인 2/2 — 마지막 확인'}
+              </p>
+              <p className="text-sm font-semibold text-slate-800">
+                {stageConfirm.action === 'open'
+                  ? `DAY ${stageConfirm.day === '23' ? '2+3' : '5'} 접근을 열겠습니까?`
+                  : `DAY ${stageConfirm.day === '23' ? '2+3' : '5'} 접근을 닫겠습니까?`
+                }
+              </p>
+              <p className="text-xs text-slate-500">
+                {stageConfirm.step === 1
+                  ? (stageConfirm.action === 'open'
+                    ? `수강생이 DAY ${stageConfirm.day === '23' ? '2+3' : '5'} 단계에 접근할 수 있게 됩니다.`
+                    : `수강생의 DAY ${stageConfirm.day === '23' ? '2+3' : '5'} 접근이 차단됩니다.`)
+                  : (stageConfirm.action === 'open'
+                    ? '예를 누르면 즉시 접근이 열립니다. 나중에 다시 닫을 수 있습니다.'
+                    : '예를 누르면 즉시 접근이 차단됩니다. 나중에 다시 열 수 있습니다.')
+                }
+              </p>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setStageConfirm(null)}
+                  className="flex-1 border border-slate-200 text-slate-600 text-xs font-semibold py-2 rounded-lg hover:bg-slate-50">
+                  취소
+                </button>
+                <button
+                  onClick={() => {
+                    if (stageConfirm.step === 1) {
+                      setStageConfirm({ ...stageConfirm, step: 2 })
+                    } else {
+                      handleStageChange(stageConfirm.day, stageConfirm.action)
+                    }
+                  }}
+                  disabled={isPending}
+                  className={`flex-1 text-white text-xs font-semibold py-2 rounded-lg disabled:opacity-50 transition-colors ${
+                    stageConfirm.action === 'open'
+                      ? 'bg-blue-600 hover:bg-blue-700'
+                      : 'bg-amber-500 hover:bg-amber-600'
+                  }`}>
+                  {stageConfirm.step === 1
+                    ? '예, 계속하기 →'
+                    : (stageConfirm.action === 'open' ? '예, 지금 열기' : '예, 지금 닫기')
+                  }
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {currentStage === 1 && (
+                <button
+                  onClick={() => setStageConfirm({ day: '23', action: 'open', step: 1 })}
+                  className="w-full border-2 border-blue-200 text-blue-700 text-xs font-semibold py-2.5 rounded-xl hover:bg-blue-50 transition-colors">
+                  🔓 DAY 2+3 열기 — 수강생 접근 허용
+                </button>
+              )}
+              {currentStage === 2 && (
+                <button
+                  onClick={() => setStageConfirm({ day: '23', action: 'close', step: 1 })}
+                  className="w-full border-2 border-amber-200 text-amber-700 text-xs font-semibold py-2.5 rounded-xl hover:bg-amber-50 transition-colors">
+                  🔒 DAY 2+3 닫기 — 수강생 접근 차단
+                </button>
+              )}
+              {currentStage === 3 && (
+                <button
+                  onClick={() => setStageConfirm({ day: '5', action: 'open', step: 1 })}
+                  className="w-full border-2 border-blue-200 text-blue-700 text-xs font-semibold py-2.5 rounded-xl hover:bg-blue-50 transition-colors">
+                  🔓 DAY 5 열기 — 수강생 접근 허용
+                </button>
+              )}
+              {currentStage === 4 && (
+                <button
+                  onClick={() => setStageConfirm({ day: '5', action: 'close', step: 1 })}
+                  className="w-full border-2 border-amber-200 text-amber-700 text-xs font-semibold py-2.5 rounded-xl hover:bg-amber-50 transition-colors">
+                  🔒 DAY 5 닫기 — 수강생 접근 차단
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 1차 면담 메모 (stage >= 1) */}
       {currentStage >= 1 && (

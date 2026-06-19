@@ -203,3 +203,48 @@ export async function unpublishTutorComment(
   revalidatePath('/student')
   return { success: true }
 }
+
+export async function openDayAccess(
+  studentId: number,
+  sessionRound: number,
+  day: '23' | '5',
+): Promise<{ success: boolean; error?: string }> {
+  const adminClient = createAdminClient()
+  const targetStage = day === '23' ? 2 : 4
+
+  const { error } = await adminClient
+    .from('cc_checklist_responses')
+    .update({ stage: targetStage })
+    .eq('student_id', studentId)
+    .eq('session_round', sessionRound)
+    .lt('stage', targetStage)
+
+  if (error) return { success: false, error: '처리 중 오류가 발생했습니다.' }
+
+  revalidatePath('/admin')
+  revalidatePath('/student')
+  return { success: true }
+}
+
+export async function closeDayAccess(
+  studentId: number,
+  sessionRound: number,
+  day: '23' | '5',
+): Promise<{ success: boolean; error?: string }> {
+  const adminClient = createAdminClient()
+  const exactStage = day === '23' ? 2 : 4
+  const prevStage = day === '23' ? 1 : 3
+
+  const { error } = await adminClient
+    .from('cc_checklist_responses')
+    .update({ stage: prevStage })
+    .eq('student_id', studentId)
+    .eq('session_round', sessionRound)
+    .eq('stage', exactStage)
+
+  if (error) return { success: false, error: '처리 중 오류가 발생했습니다.' }
+
+  revalidatePath('/admin')
+  revalidatePath('/student')
+  return { success: true }
+}
