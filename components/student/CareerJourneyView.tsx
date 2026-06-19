@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { JOB_LABELS_FLAT, type JobType } from '@/lib/survey-questions'
 import { saveDay23, saveDay5, rollbackStage, type RollbackTarget } from '@/app/actions/checklist'
@@ -152,7 +152,7 @@ export default function CareerJourneyView({
                   <div key={id}>
                     <p className="text-xs font-semibold text-slate-400 mb-1">{label}</p>
                     {val?.trim() ? (
-                      <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{val}</p>
+                      <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{val}</p>
                     ) : (
                       <p className="text-sm text-slate-300 italic">작성하지 않았어요</p>
                     )}
@@ -251,9 +251,17 @@ function D23Textarea({ value, onChange, placeholder, rows = 4 }: {
   value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
   placeholder?: string; rows?: number
 }) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [value])
   return (
-    <textarea value={value} onChange={onChange} rows={rows} placeholder={placeholder}
-      className="w-full bg-slate-50 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200 resize-none" />
+    <textarea ref={ref} value={value} onChange={onChange} rows={rows} placeholder={placeholder}
+      className="w-full bg-slate-50 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200"
+      style={{ resize: 'none', overflow: 'hidden', minHeight: `${rows * 1.5}rem` }} />
   )
 }
 function CbCell({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -306,9 +314,17 @@ function Area({ value, onChange, placeholder, rows = 4 }: {
   placeholder?: string
   rows?: number
 }) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [value])
   return (
-    <textarea value={value} onChange={onChange} rows={rows} placeholder={placeholder}
-      className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300 resize-none" />
+    <textarea ref={ref} value={value} onChange={onChange} rows={rows} placeholder={placeholder}
+      className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300"
+      style={{ resize: 'none', overflow: 'hidden', minHeight: `${rows * 1.5}rem` }} />
   )
 }
 

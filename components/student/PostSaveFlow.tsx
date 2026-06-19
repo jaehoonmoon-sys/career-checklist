@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useState, useTransition } from 'react'
+import { Fragment, useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { JOB_LABELS_FLAT, type JobType } from '@/lib/survey-questions'
 import { saveDay1, saveNextSteps } from '@/app/actions/checklist'
@@ -299,19 +299,27 @@ function D1Callout({ color, icon, children }: {
   )
 }
 
-function D1Textarea({ value, onChange, placeholder, rows = 4 }: {
+function D1Textarea({ value, onChange, placeholder }: {
   value: string
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
   placeholder?: string
-  rows?: number
 }) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [value])
   return (
     <textarea
+      ref={ref}
       value={value}
       onChange={onChange}
-      rows={rows}
+      rows={4}
       placeholder={placeholder ?? '여기에 작성하세요'}
-      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:bg-white resize-none transition-colors"
+      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:bg-white transition-colors"
+      style={{ resize: 'none', overflow: 'hidden', minHeight: '6rem' }}
     />
   )
 }
