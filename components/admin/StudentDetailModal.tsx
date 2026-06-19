@@ -12,7 +12,9 @@ import {
 } from '@/lib/survey-questions'
 import { saveTutorComment } from '@/app/actions/admin'
 import type { StudentRow } from '@/app/actions/admin'
-import { NEXT_STEPS_ITEMS } from '@/lib/types'
+import { NEXT_STEPS_ITEMS, type Day23Data, type Day5Data } from '@/lib/types'
+import { DEFAULT_FORM_CONFIG } from '@/lib/form-config'
+import { Day23ReviewContent } from '@/components/student/CareerJourneyView'
 
 const JOB_ORDER: JobType[] = ['performance', 'content', 'brand', 'growth', 'crm', 'ae']
 
@@ -43,8 +45,6 @@ const CustomTick = ({ x, y, payload }: any) => {
   )
 }
 
-const STAGE_LABELS = ['체크리스트', 'DAY 1', '1차 면담', 'DAY 2+3', '2차 면담', '최종 정리', '완료']
-
 type Props = {
   student: StudentRow
   onClose: () => void
@@ -53,9 +53,8 @@ type Props = {
 export default function StudentDetailModal({ student, onClose }: Props) {
   const { answers, top_job, job_pcts, student_name, answered_count, cohort, stage } = student
   const chartColor = top_job ? JOB_COLORS[top_job] : '#94a3b8'
-  const [tab, setTab] = useState<'checklist' | 'journey'>('checklist')
+  const [tab, setTab] = useState<'checklist' | 'day1' | 'day23' | 'day5'>('checklist')
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const hasJourneyData = (stage ?? 0) > 0 || !!student.day1_data || !!student.experiences
 
   const radarData = JOB_ORDER.map(job => ({
     subject: JOB_LABELS[job],
@@ -172,105 +171,116 @@ export default function StudentDetailModal({ student, onClose }: Props) {
         </div>
 
         {/* 탭 */}
-        <div className="bg-white border-b border-slate-100 px-5 flex gap-1 shrink-0">
-          <button onClick={() => setTab('checklist')}
-            className={`py-2.5 px-2 text-xs font-medium border-b-2 transition-colors ${
-              tab === 'checklist' ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-400 hover:text-slate-600'
-            }`}>
-            📋 체크리스트
-          </button>
-          <button onClick={() => setTab('journey')}
-            className={`py-2.5 px-2 text-xs font-medium border-b-2 transition-colors flex items-center gap-1 ${
-              tab === 'journey' ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-400 hover:text-slate-600'
-            }`}>
-            🗺️ 진행 현황
-            {hasJourneyData && (
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-            )}
-          </button>
+        <div className="bg-white border-b border-slate-100 px-5 flex gap-1 shrink-0 overflow-x-auto">
+          {([
+            { id: 'checklist', label: '📋 체크리스트' },
+            { id: 'day1',      label: '📝 DAY 1' },
+            { id: 'day23',     label: '🗺️ DAY 2+3' },
+            { id: 'day5',      label: '🏁 DAY 5' },
+          ] as const).map(({ id, label }) => (
+            <button key={id} onClick={() => setTab(id)}
+              className={`py-2.5 px-2 text-xs font-medium border-b-2 whitespace-nowrap transition-colors ${
+                tab === id ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-400 hover:text-slate-600'
+              }`}>
+              {label}
+            </button>
+          ))}
         </div>
 
         {/* 컨텐츠 */}
         <div className="flex-1 overflow-y-auto">
-          {tab === 'journey' && (
+          {/* 체크리스트 탭 */}
+          {tab === 'checklist' && <>
+            <div className="lg:hidden px-4 pt-4">{rightPanel}</div>
+            <div className="px-4 py-5 lg:flex lg:gap-5 lg:items-start">
+              <div className="flex-1 min-w-0 space-y-4">
+                {CATEGORIES.map(cat => {
+                  const catQs = QUESTIONS.filter(q => q.category === cat.key)
+                  if (!catQs.length) return null
+                  const catDone = catQs.filter(q => answers[q.id] !== undefined).length
+                  return (
+                    <div key={cat.key} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                      <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center gap-2">
+                        <span className="text-base">{cat.emoji}</span>
+                        <span className="text-sm font-semibold text-slate-800">{cat.label}</span>
+                        <span className="ml-auto text-xs text-slate-400 font-medium">{catDone}/{catQs.length}</span>
+                      </div>
+                      <div className="divide-y divide-slate-50">
+                        {catQs.map(q => {
+                          const sel = answers[q.id]
+                          const isAnswered = sel !== undefined
+                          const optColor = isAnswered ? OPTION_COLORS[sel] : null
+                          return (
+                            <div key={q.id} className="px-5 py-3">
+                              <div className="flex items-start gap-3">
+                                <div className={`w-[18px] h-[18px] rounded border-2 flex items-center justify-center shrink-0 mt-0.5 ${!isAnswered ? 'border-slate-200 bg-white' : ''}`}
+                                  style={isAnswered ? { backgroundColor: optColor!, borderColor: optColor! } : {}}>
+                                  {isAnswered && (
+                                    <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24"
+                                      stroke="currentColor" strokeWidth={3.5}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  {isAnswered && (
+                                    <span className="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full text-white mb-0.5"
+                                      style={{ backgroundColor: optColor! }}>
+                                      {ANSWER_OPTIONS.find(o => o.key === sel)?.label}
+                                    </span>
+                                  )}
+                                  <p className="text-[14px] font-semibold text-slate-800 leading-snug">{q.text}</p>
+                                </div>
+                              </div>
+                              <div className="flex gap-1 mt-2 ml-[30px]">
+                                {ANSWER_OPTIONS.map(opt => {
+                                  const isSelected = sel === opt.key
+                                  return (
+                                    <div key={opt.key}
+                                      className={`flex-1 py-1.5 text-[11px] font-medium rounded-lg border text-center select-none ${
+                                        isSelected ? 'text-white border-transparent' : 'bg-white text-slate-300 border-slate-100'
+                                      }`}
+                                      style={isSelected ? { backgroundColor: OPTION_COLORS[opt.key], borderColor: OPTION_COLORS[opt.key] } : {}}>
+                                      {opt.label}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="hidden lg:block w-[280px] shrink-0 sticky top-0"
+                style={{ maxHeight: 'calc(100vh - 105px)', overflowY: 'auto' }}>
+                {rightPanel}
+              </div>
+            </div>
+          </>}
+
+          {/* DAY 1 탭 */}
+          {tab === 'day1' && (
             <div className={`px-5 py-5 space-y-5 ${isFullscreen ? 'max-w-5xl' : 'max-w-2xl'}`}>
-              <JourneyView student={student} />
+              <Day1AdminPanel student={student} />
             </div>
           )}
 
-          {tab === 'checklist' && <>
-          <div className="lg:hidden px-4 pt-4">{rightPanel}</div>
-          <div className="px-4 py-5 lg:flex lg:gap-5 lg:items-start">
-            <div className="flex-1 min-w-0 space-y-4">
-              {CATEGORIES.map(cat => {
-                const catQs = QUESTIONS.filter(q => q.category === cat.key)
-                if (!catQs.length) return null
-                const catDone = catQs.filter(q => answers[q.id] !== undefined).length
-                return (
-                  <div key={cat.key} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center gap-2">
-                      <span className="text-base">{cat.emoji}</span>
-                      <span className="text-sm font-semibold text-slate-800">{cat.label}</span>
-                      <span className="ml-auto text-xs text-slate-400 font-medium">{catDone}/{catQs.length}</span>
-                    </div>
-                    <div className="divide-y divide-slate-50">
-                      {catQs.map(q => {
-                        const sel = answers[q.id]
-                        const isAnswered = sel !== undefined
-                        const optColor = isAnswered ? OPTION_COLORS[sel] : null
-                        return (
-                          <div key={q.id} className="px-5 py-3">
-                            <div className="flex items-start gap-3">
-                              <div className={`w-[18px] h-[18px] rounded border-2 flex items-center justify-center shrink-0 mt-0.5 ${!isAnswered ? 'border-slate-200 bg-white' : ''}`}
-                                style={isAnswered ? { backgroundColor: optColor!, borderColor: optColor! } : {}}>
-                                {isAnswered && (
-                                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor" strokeWidth={3.5}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                  </svg>
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                {isAnswered && (
-                                  <span className="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full text-white mb-0.5"
-                                    style={{ backgroundColor: optColor! }}>
-                                    {ANSWER_OPTIONS.find(o => o.key === sel)?.label}
-                                  </span>
-                                )}
-                                <p className="text-[14px] font-semibold text-slate-800 leading-snug">{q.text}</p>
-                              </div>
-                            </div>
-                            <div className="flex gap-1 mt-2 ml-[30px]">
-                              {ANSWER_OPTIONS.map(opt => {
-                                const isSelected = sel === opt.key
-                                return (
-                                  <div key={opt.key}
-                                    className={`flex-1 py-1.5 text-[11px] font-medium rounded-lg border text-center select-none ${
-                                      isSelected ? 'text-white border-transparent' : 'bg-white text-slate-300 border-slate-100'
-                                    }`}
-                                    style={isSelected ? {
-                                      backgroundColor: OPTION_COLORS[opt.key],
-                                      borderColor: OPTION_COLORS[opt.key],
-                                    } : {}}>
-                                    {opt.label}
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )
-              })}
+          {/* DAY 2+3 탭 */}
+          {tab === 'day23' && (
+            <div className={`px-5 py-5 space-y-5 ${isFullscreen ? 'max-w-5xl' : 'max-w-2xl'}`}>
+              <Day23AdminPanel student={student} />
             </div>
-            <div className="hidden lg:block w-[280px] shrink-0 sticky top-0"
-              style={{ maxHeight: 'calc(100vh - 105px)', overflowY: 'auto' }}>
-              {rightPanel}
+          )}
+
+          {/* DAY 5 탭 */}
+          {tab === 'day5' && (
+            <div className={`px-5 py-5 space-y-5 ${isFullscreen ? 'max-w-5xl' : 'max-w-2xl'}`}>
+              <Day5AdminPanel student={student} />
             </div>
-          </div>
-          </>}
+          )}
         </div>
       </div>
     </div>
@@ -294,271 +304,6 @@ function StageBadge({ stage }: { stage: number }) {
       style={{ color: c.color, borderColor: `${c.color}50`, backgroundColor: `${c.color}10` }}>
       {c.label}
     </span>
-  )
-}
-
-function JourneyView({ student }: { student: StudentRow }) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
-
-  const [comment1, setComment1] = useState(student.tutor_comment_1 ?? '')
-  const [editing1, setEditing1] = useState(!student.tutor_comment_1)
-  const [saveResult1, setSaveResult1] = useState<{ ok?: boolean; error?: string } | null>(null)
-
-  const [comment2, setComment2] = useState(student.tutor_comment_2 ?? '')
-  const [editing2, setEditing2] = useState(!student.tutor_comment_2)
-  const [saveResult2, setSaveResult2] = useState<{ ok?: boolean; error?: string } | null>(null)
-
-  const currentStage = student.stage ?? 0
-
-  const handleSave = (num: 1 | 2) => {
-    const val = num === 1 ? comment1 : comment2
-    if (!val.trim()) return
-    startTransition(async () => {
-      const result = await saveTutorComment(student.id, 1, num, val)
-      if (result.success) {
-        if (num === 1) { setSaveResult1({ ok: true }); setEditing1(false) }
-        else { setSaveResult2({ ok: true }); setEditing2(false) }
-        setTimeout(() => { router.refresh() }, 800)
-      } else {
-        if (num === 1) setSaveResult1({ error: result.error })
-        else setSaveResult2({ error: result.error })
-      }
-    })
-  }
-
-  // 진행 단계 스테퍼
-  const STEPS = ['체크리스트', 'DAY 1', '1차 면담', 'DAY 2+3', '2차 면담', '최종 정리']
-  const completedUpTo = currentStage
-
-  return (
-    <div className="space-y-5">
-      {/* 진행 단계 */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-4">
-        <p className="text-xs font-semibold text-slate-600 mb-3">진행 단계</p>
-        <div className="flex items-center gap-0 flex-wrap gap-y-2">
-          {STEPS.map((label, i) => {
-            const done = i < completedUpTo
-            const active = i === completedUpTo
-            return (
-              <div key={i} className="flex items-center">
-                <div className="flex flex-col items-center">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold
-                    ${done ? 'bg-emerald-500 text-white' :
-                      active ? 'bg-slate-900 text-white' :
-                      'bg-slate-100 text-slate-400'}`}>
-                    {done ? '✓' : i + 1}
-                  </div>
-                  <span className="text-[9px] text-slate-400 mt-0.5 whitespace-nowrap">{label}</span>
-                </div>
-                {i < STEPS.length - 1 && (
-                  <div className={`w-6 h-0.5 mb-3.5 ${i < completedUpTo ? 'bg-emerald-400' : 'bg-slate-200'}`} />
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* 1차 면담 메모 (stage >= 1) */}
-      {currentStage >= 1 && (
-        <div className={`bg-white rounded-2xl border p-4 ${editing1 ? 'border-orange-100' : 'border-slate-100'}`}>
-          <div className="flex items-center justify-between mb-1">
-            <p className={`text-xs font-semibold ${editing1 ? 'text-orange-600' : 'text-slate-600'}`}>
-              📝 1차 면담 메모
-            </p>
-            {!editing1 && (
-              <button onClick={() => setEditing1(true)} className="text-xs text-slate-400 hover:text-slate-600 underline">
-                수정
-              </button>
-            )}
-          </div>
-          {editing1 ? (
-            <>
-              <p className="text-xs text-slate-400 mb-3">메모 용도입니다. 저장 후 수강생에게 공개할 수 있습니다.</p>
-              <textarea
-                value={comment1}
-                onChange={e => setComment1(e.target.value)}
-                rows={4}
-                placeholder="면담 내용 요약, 다음 단계 가이드, 추가 고려 사항 등..."
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300 resize-none mb-3"
-              />
-              {saveResult1 && (
-                <p className={`text-xs mb-2 ${saveResult1.ok ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {saveResult1.ok ? '✓ 저장됐어요.' : saveResult1.error}
-                </p>
-              )}
-              <div className="flex gap-2">
-                {student.tutor_comment_1 && (
-                  <button onClick={() => { setEditing1(false); setComment1(student.tutor_comment_1 ?? '') }}
-                    className="flex-1 border border-slate-200 text-slate-600 font-semibold py-2.5 rounded-xl text-sm">
-                    취소
-                  </button>
-                )}
-                <button
-                  onClick={() => handleSave(1)}
-                  disabled={isPending || !comment1.trim()}
-                  className="flex-1 bg-slate-900 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-40">
-                  {isPending ? '저장 중...' : '저장'}
-                </button>
-              </div>
-            </>
-          ) : (
-            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{comment1}</p>
-          )}
-
-        </div>
-      )}
-
-      {/* 2차 면담 메모 (stage >= 3) */}
-      {currentStage >= 3 && (
-        <div className={`bg-white rounded-2xl border p-4 ${editing2 ? 'border-orange-100' : 'border-slate-100'}`}>
-          <div className="flex items-center justify-between mb-1">
-            <p className={`text-xs font-semibold ${editing2 ? 'text-orange-600' : 'text-slate-600'}`}>
-              📝 2차 면담 메모
-            </p>
-            {!editing2 && (
-              <button onClick={() => setEditing2(true)} className="text-xs text-slate-400 hover:text-slate-600 underline">
-                수정
-              </button>
-            )}
-          </div>
-          {editing2 ? (
-            <>
-              <p className="text-xs text-slate-400 mb-3">메모 용도입니다. 저장 후 수강생에게 공개할 수 있습니다.</p>
-              <textarea
-                value={comment2}
-                onChange={e => setComment2(e.target.value)}
-                rows={4}
-                placeholder="면담 내용 요약, 다음 단계 가이드, 추가 고려 사항 등..."
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300 resize-none mb-3"
-              />
-              {saveResult2 && (
-                <p className={`text-xs mb-2 ${saveResult2.ok ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {saveResult2.ok ? '✓ 저장됐어요.' : saveResult2.error}
-                </p>
-              )}
-              <div className="flex gap-2">
-                {student.tutor_comment_2 && (
-                  <button onClick={() => { setEditing2(false); setComment2(student.tutor_comment_2 ?? '') }}
-                    className="flex-1 border border-slate-200 text-slate-600 font-semibold py-2.5 rounded-xl text-sm">
-                    취소
-                  </button>
-                )}
-                <button
-                  onClick={() => handleSave(2)}
-                  disabled={isPending || !comment2.trim()}
-                  className="flex-1 bg-slate-900 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-40">
-                  {isPending ? '저장 중...' : '저장'}
-                </button>
-              </div>
-            </>
-          ) : (
-            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{comment2}</p>
-          )}
-
-        </div>
-      )}
-
-      {/* DAY 1 데이터 */}
-      {student.day1_data && Object.values(student.day1_data as Record<string, unknown>).some(v => typeof v === 'string' && v.trim()) && (
-        <DayDataBlock title="📅 DAY 1 | 나의 경험 꺼내기" fields={[
-          { key: 'work',              label: '💼 일/알바/직장 경험' },
-          { key: 'school',            label: '🎓 학교/학습 경험' },
-          { key: 'personal',          label: '🌱 개인 활동' },
-          { key: 'camp_basic_role',   label: '🏕️ 기초 PJT — 역할' },
-          { key: 'camp_basic_made',   label: '🏕️ 기초 PJT — 만든 것' },
-          { key: 'camp_basic_memory', label: '🏕️ 기초 PJT — 기억에 남는 것' },
-          { key: 'camp_adv_role',     label: '🏕️ 심화 PJT — 역할' },
-          { key: 'camp_adv_made',     label: '🏕️ 심화 PJT — 만든 것' },
-          { key: 'camp_adv_memory',   label: '🏕️ 심화 PJT — 기억에 남는 것' },
-          { key: 'energy_flow',       label: '⚡ 몰입했던 순간' },
-          { key: 'good_at',           label: '✨ 잘한다고 느꼈던 순간' },
-          { key: 'dislike',           label: '😣 하기 싫었던 것' },
-          { key: 'today_discovery',   label: '✅ 오늘의 발견' },
-        ]} data={student.day1_data as Record<string, string>} />
-      )}
-
-      {/* 다음 단계 자기 체크 현황 */}
-      <NextStepsAdminBlock day1Data={student.day1_data} />
-
-      {/* DAY 2+3 데이터 (stage 2 이상) */}
-      {currentStage >= 2 && (() => {
-        const d23 = student.day23_data as Record<string, unknown> | null
-        const hasD23 = d23 && Object.values(d23).some(v =>
-          Array.isArray(v)
-            ? v.some(row => typeof row === 'object' && row !== null && Object.values(row).some(Boolean))
-            : typeof v === 'string' && v.trim() !== ''
-        )
-        return hasD23 ? (
-          <DayDataBlock title="📅 DAY 2+3 | 마케터 탐색 + 취업 방향" fields={[
-            { key: 'curriculum',          label: '📚 커리큘럼 체크' },
-            { key: 'work_style',          label: '🎯 업무 스타일' },
-            { key: 'strengths',           label: '💪 강점 초안' },
-            { key: 'marketer_sentence',   label: '✍️ 한 문장 완성' },
-            { key: 'target_job_1',        label: '🥇 1순위 직무' },
-            { key: 'target_job_2',        label: '🥈 2순위 직무' },
-            { key: 'industries',          label: '🏭 관심 산업' },
-            { key: 'industry_connection', label: '🔗 DAY1 경험 연결' },
-            { key: 'work_env_type',       label: '🏢 대행사 vs 인하우스' },
-            { key: 'work_env_size',       label: '🏢 회사 규모' },
-            { key: 'target_jd_url',       label: '📄 목표 JD 링크' },
-            { key: 'target_jd_note',      label: '📝 JD 메모' },
-            { key: 'compass_draft',       label: '🧭 취업 나침반 초안' },
-          ]} data={serializeDay23(d23)} />
-        ) : (
-          <div className="bg-white rounded-2xl border border-slate-100 p-4">
-            <p className="text-xs font-semibold text-slate-600 mb-2">📅 DAY 2+3 제출 내용</p>
-            <p className="text-sm text-slate-300">아직 제출하지 않았어요</p>
-          </div>
-        )
-      })()}
-
-      {/* DAY 5 데이터 (stage 4 이상) */}
-      {currentStage >= 4 && (() => {
-        const d5 = student.day5_data as Record<string, string> | null
-        const textKeys = ['compass_who', 'compass_where', 'compass_why', 'future_efforts']
-        const hasD5 = d5 && textKeys.some(k => typeof d5[k] === 'string' && d5[k].trim())
-        return hasD5 ? (
-          <DayDataBlock title="📅 DAY 5 | 나의 취업 나침반 완성" fields={[
-            { key: 'compass_who',    label: '🙋 나는 어떤 사람인가' },
-            { key: 'compass_where',  label: '🎯 나는 어디로 가는가' },
-            { key: 'compass_why',    label: '💬 나는 왜 이 방향인가' },
-            { key: 'future_efforts', label: '💭 앞으로의 노력' },
-          ]} data={d5} />
-        ) : (
-          <div className="bg-white rounded-2xl border border-slate-100 p-4">
-            <p className="text-xs font-semibold text-slate-600 mb-2">📅 DAY 5 제출 내용</p>
-            <p className="text-sm text-slate-300">아직 제출하지 않았어요</p>
-          </div>
-        )
-      })()}
-
-      {/* 레거시 경험 데이터 */}
-      {student.experiences && !student.day1_data && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-4">
-          <p className="text-xs font-semibold text-slate-500 mb-3">📄 이전 버전 경험 정리 데이터</p>
-          {Object.entries(student.experiences)
-            .filter(([, v]) => v?.trim())
-            .map(([k, v]) => (
-              <div key={k} className="mb-3 last:mb-0">
-                <p className="text-xs font-semibold text-slate-500 mb-1">{k}</p>
-                <div className="bg-slate-50 rounded-xl px-3 py-2.5 text-sm text-slate-700 whitespace-pre-wrap break-words">
-                  {v}
-                </div>
-              </div>
-            ))}
-        </div>
-      )}
-
-      {/* 아무 데이터 없을 때 */}
-      {!student.day1_data && !student.experiences && currentStage === 0 && (
-        <div className="text-center py-10 text-slate-400">
-          <p className="text-3xl mb-2">📝</p>
-          <p className="text-sm">아직 경험 정리를 작성하지 않았어요</p>
-        </div>
-      )}
-    </div>
   )
 }
 
@@ -598,35 +343,269 @@ function NextStepsAdminBlock({ day1Data }: { day1Data: unknown }) {
   )
 }
 
-function serializeDay23(raw: Record<string, unknown>): Record<string, string> {
-  const result: Record<string, string> = {}
-  const STR_KEYS = ['strengths', 'marketer_sentence', 'target_job_1', 'target_job_2',
-    'industries', 'industry_connection', 'target_jd_url', 'target_jd_note', 'compass_draft']
-  for (const k of STR_KEYS) {
-    if (typeof raw[k] === 'string') result[k] = raw[k] as string
+// ── Day 1 관리자 탭 ──────────────────────────────────────────────
+
+function Day1AdminPanel({ student }: { student: StudentRow }) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [comment1, setComment1] = useState(student.tutor_comment_1 ?? '')
+  const [editing1, setEditing1] = useState(!student.tutor_comment_1)
+  const [saveResult1, setSaveResult1] = useState<{ ok?: boolean; error?: string } | null>(null)
+  const currentStage = student.stage ?? 0
+
+  const handleSave = () => {
+    if (!comment1.trim()) return
+    startTransition(async () => {
+      const result = await saveTutorComment(student.id, 1, 1, comment1)
+      if (result.success) { setSaveResult1({ ok: true }); setEditing1(false); setTimeout(() => router.refresh(), 800) }
+      else setSaveResult1({ error: result.error })
+    })
   }
-  if (Array.isArray(raw.curriculum)) {
-    const AREAS = ['광고 기획', 'AI 활용 콘텐츠', '비주얼 전략', '퍼포먼스 마케팅', '데이터 분석', '그로스 마케팅', '글쓰기/카피', '캠페인 기획']
-    result.curriculum = (raw.curriculum as {interesting:boolean;good_at:boolean;boring:boolean;comment:string}[])
-      .map((r, i) => {
-        const tags = [r.interesting && '흥미', r.good_at && '잘했다', r.boring && '별로'].filter(Boolean).join('/')
-        return `${AREAS[i] ?? i}: ${tags || '-'}${r.comment ? ' · ' + r.comment : ''}`
-      }).join('\n')
+
+  return (
+    <div className="space-y-5">
+      {/* 진행 단계 */}
+      <StageStepperBlock stage={currentStage} />
+
+      {/* 1차 면담 메모 */}
+      {currentStage >= 1 && (
+        <div className={`bg-white rounded-2xl border p-4 ${editing1 ? 'border-orange-100' : 'border-slate-100'}`}>
+          <div className="flex items-center justify-between mb-1">
+            <p className={`text-xs font-semibold ${editing1 ? 'text-orange-600' : 'text-slate-600'}`}>📝 1차 면담 메모</p>
+            {!editing1 && <button onClick={() => setEditing1(true)} className="text-xs text-slate-400 hover:text-slate-600 underline">수정</button>}
+          </div>
+          {editing1 ? (
+            <>
+              <p className="text-xs text-slate-400 mb-3">메모 용도입니다. 저장 후 수강생에게 공개할 수 있습니다.</p>
+              <textarea value={comment1} onChange={e => setComment1(e.target.value)} rows={4}
+                placeholder="면담 내용 요약, 다음 단계 가이드, 추가 고려 사항 등..."
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300 resize-none mb-3" />
+              {saveResult1 && (
+                <p className={`text-xs mb-2 ${saveResult1.ok ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {saveResult1.ok ? '✓ 저장됐어요.' : saveResult1.error}
+                </p>
+              )}
+              <div className="flex gap-2">
+                {student.tutor_comment_1 && (
+                  <button onClick={() => { setEditing1(false); setComment1(student.tutor_comment_1 ?? '') }}
+                    className="flex-1 border border-slate-200 text-slate-600 font-semibold py-2.5 rounded-xl text-sm">취소</button>
+                )}
+                <button onClick={handleSave} disabled={isPending || !comment1.trim()}
+                  className="flex-1 bg-slate-900 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-40">
+                  {isPending ? '저장 중...' : '저장'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{comment1}</p>
+          )}
+        </div>
+      )}
+
+      {/* DAY 1 데이터 */}
+      {student.day1_data && Object.values(student.day1_data as Record<string, unknown>).some(v => typeof v === 'string' && v.trim()) && (
+        <DayDataBlock title="📅 DAY 1 | 나의 경험 꺼내기" fields={[
+          { key: 'work',              label: '💼 일/알바/직장 경험' },
+          { key: 'school',            label: '🎓 학교/학습 경험' },
+          { key: 'personal',          label: '🌱 개인 활동' },
+          { key: 'camp_basic_role',   label: '🏕️ 기초 PJT — 역할' },
+          { key: 'camp_basic_made',   label: '🏕️ 기초 PJT — 만든 것' },
+          { key: 'camp_basic_memory', label: '🏕️ 기초 PJT — 기억에 남는 것' },
+          { key: 'camp_adv_role',     label: '🏕️ 심화 PJT — 역할' },
+          { key: 'camp_adv_made',     label: '🏕️ 심화 PJT — 만든 것' },
+          { key: 'camp_adv_memory',   label: '🏕️ 심화 PJT — 기억에 남는 것' },
+          { key: 'energy_flow',       label: '⚡ 몰입했던 순간' },
+          { key: 'good_at',           label: '✨ 잘한다고 느꼈던 순간' },
+          { key: 'dislike',           label: '😣 하기 싫었던 것' },
+          { key: 'today_discovery',   label: '✅ 오늘의 발견' },
+        ]} data={student.day1_data as Record<string, string>} />
+      )}
+
+      <NextStepsAdminBlock day1Data={student.day1_data} />
+
+      {currentStage === 0 && !student.day1_data && (
+        <div className="text-center py-10 text-slate-400">
+          <p className="text-3xl mb-2">📝</p>
+          <p className="text-sm">아직 DAY 1을 작성하지 않았어요</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Day 2+3 관리자 탭 ─────────────────────────────────────────────
+
+function Day23AdminPanel({ student }: { student: StudentRow }) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [comment2, setComment2] = useState(student.tutor_comment_2 ?? '')
+  const [editing2, setEditing2] = useState(!student.tutor_comment_2)
+  const [saveResult2, setSaveResult2] = useState<{ ok?: boolean; error?: string } | null>(null)
+  const currentStage = student.stage ?? 0
+
+  const handleSave = () => {
+    if (!comment2.trim()) return
+    startTransition(async () => {
+      const result = await saveTutorComment(student.id, 1, 2, comment2)
+      if (result.success) { setSaveResult2({ ok: true }); setEditing2(false); setTimeout(() => router.refresh(), 800) }
+      else setSaveResult2({ error: result.error })
+    })
   }
-  if (Array.isArray(raw.work_style)) {
-    const AB = [['숫자·분석','기획·크리에이티브'],['빠른 실행','깊이 있는 사고'],['혼자 집중','협업·소통'],['즉각 성과','장기 전략']]
-    result.work_style = (raw.work_style as {score:string;comment:string}[])
-      .map((r, i) => `${AB[i]?.[0]}(${r.score||'-'})${AB[i]?.[1]}${r.comment ? ' · '+r.comment : ''}`).join('\n')
-  }
-  if (Array.isArray(raw.work_env_type)) {
-    result.work_env_type = (raw.work_env_type as {choice:string;reason:string}[])
-      .map((r, i) => `${['대행사','인하우스'][i]}: ${r.choice||'-'}${r.reason ? ' · '+r.reason : ''}`).join('\n')
-  }
-  if (Array.isArray(raw.work_env_size)) {
-    result.work_env_size = (raw.work_env_size as {choice:string;reason:string}[])
-      .map((r, i) => `${['스타트업','중소기업','중견·대기업'][i]}: ${r.choice||'-'}${r.reason ? ' · '+r.reason : ''}`).join('\n')
-  }
-  return result
+
+  const d23 = student.day23_data as Day23Data | null
+
+  return (
+    <div className="space-y-5">
+      {/* 2차 면담 메모 (stage >= 3) */}
+      {currentStage >= 3 && (
+        <div className={`bg-white rounded-2xl border p-4 ${editing2 ? 'border-orange-100' : 'border-slate-100'}`}>
+          <div className="flex items-center justify-between mb-1">
+            <p className={`text-xs font-semibold ${editing2 ? 'text-orange-600' : 'text-slate-600'}`}>📝 2차 면담 메모</p>
+            {!editing2 && <button onClick={() => setEditing2(true)} className="text-xs text-slate-400 hover:text-slate-600 underline">수정</button>}
+          </div>
+          {editing2 ? (
+            <>
+              <p className="text-xs text-slate-400 mb-3">메모 용도입니다. 저장 후 수강생에게 공개할 수 있습니다.</p>
+              <textarea value={comment2} onChange={e => setComment2(e.target.value)} rows={4}
+                placeholder="면담 내용 요약, 다음 단계 가이드, 추가 고려 사항 등..."
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300 resize-none mb-3" />
+              {saveResult2 && (
+                <p className={`text-xs mb-2 ${saveResult2.ok ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {saveResult2.ok ? '✓ 저장됐어요.' : saveResult2.error}
+                </p>
+              )}
+              <div className="flex gap-2">
+                {student.tutor_comment_2 && (
+                  <button onClick={() => { setEditing2(false); setComment2(student.tutor_comment_2 ?? '') }}
+                    className="flex-1 border border-slate-200 text-slate-600 font-semibold py-2.5 rounded-xl text-sm">취소</button>
+                )}
+                <button onClick={handleSave} disabled={isPending || !comment2.trim()}
+                  className="flex-1 bg-slate-900 text-white font-semibold py-2.5 rounded-xl text-sm disabled:opacity-40">
+                  {isPending ? '저장 중...' : '저장'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{comment2}</p>
+          )}
+        </div>
+      )}
+
+      {/* DAY 2+3 시각적 데이터 */}
+      {currentStage >= 2 ? (
+        d23 && Object.values(d23).some(v =>
+          Array.isArray(v)
+            ? v.some(row => typeof row === 'object' && row !== null && Object.values(row).some(Boolean))
+            : typeof v === 'string' && v.trim() !== ''
+        ) ? (
+          <div className="bg-white rounded-2xl border border-slate-100 p-4">
+            <p className="text-xs font-semibold text-slate-700 mb-4">📅 DAY 2+3 제출 내용</p>
+            <Day23ReviewContent day23Data={d23} formConfig={DEFAULT_FORM_CONFIG} />
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-slate-100 p-4">
+            <p className="text-xs font-semibold text-slate-600 mb-2">📅 DAY 2+3 제출 내용</p>
+            <p className="text-sm text-slate-300">아직 제출하지 않았어요</p>
+          </div>
+        )
+      ) : (
+        <div className="text-center py-10 text-slate-400">
+          <p className="text-3xl mb-2">🗺️</p>
+          <p className="text-sm">DAY 2+3 단계가 아직 열리지 않았어요</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Day 5 관리자 탭 ──────────────────────────────────────────────
+
+function Day5AdminPanel({ student }: { student: StudentRow }) {
+  const currentStage = student.stage ?? 0
+  const d5 = student.day5_data as Day5Data | null
+  const textKeys: (keyof Day5Data)[] = ['compass_who', 'compass_where', 'compass_why', 'future_efforts']
+  const hasD5 = d5 && textKeys.some(k => typeof d5[k] === 'string' && (d5[k] as string).trim())
+
+  return (
+    <div className="space-y-5">
+      {currentStage >= 4 ? (
+        hasD5 && d5 ? (
+          <div className="bg-white rounded-2xl border border-slate-100 p-4 space-y-4">
+            <p className="text-xs font-semibold text-slate-700">📅 DAY 5 | 나의 취업 나침반 완성</p>
+            {([
+              { key: 'compass_who',    label: '🙋 나는 어떤 사람인가' },
+              { key: 'compass_where',  label: '🎯 나는 어디로 가는가' },
+              { key: 'compass_why',    label: '💬 나는 왜 이 방향인가' },
+              { key: 'future_efforts', label: '💭 앞으로의 노력' },
+            ] as const).map(({ key, label }) => {
+              const val = d5[key] as string
+              return val?.trim() ? (
+                <div key={key}>
+                  <p className="text-xs font-semibold text-slate-500 mb-1">{label}</p>
+                  <div className="bg-slate-50 rounded-xl px-3 py-2.5 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{val}</div>
+                </div>
+              ) : null
+            })}
+            {d5.pre_checklist && Object.keys(d5.pre_checklist).length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 mb-2">✅ 세션 전 체크리스트</p>
+                <div className="space-y-1.5">
+                  {Object.entries(d5.pre_checklist).map(([item, checked]) => (
+                    <div key={item} className="flex items-center gap-2">
+                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${checked ? 'bg-emerald-500 border-emerald-500' : 'border-slate-200'}`}>
+                        {checked && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                      </div>
+                      <span className={`text-xs ${checked ? 'text-emerald-700 line-through' : 'text-slate-500'}`}>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-slate-100 p-4">
+            <p className="text-xs font-semibold text-slate-600 mb-2">📅 DAY 5 제출 내용</p>
+            <p className="text-sm text-slate-300">아직 제출하지 않았어요</p>
+          </div>
+        )
+      ) : (
+        <div className="text-center py-10 text-slate-400">
+          <p className="text-3xl mb-2">🏁</p>
+          <p className="text-sm">DAY 5 단계가 아직 열리지 않았어요</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── 공통 단계 스테퍼 ──────────────────────────────────────────────
+
+function StageStepperBlock({ stage }: { stage: number }) {
+  const STEPS = ['체크리스트', 'DAY 1', '1차 면담', 'DAY 2+3', '2차 면담', '최종 정리']
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 p-4">
+      <p className="text-xs font-semibold text-slate-600 mb-3">진행 단계</p>
+      <div className="flex items-center flex-wrap gap-y-2">
+        {STEPS.map((label, i) => {
+          const done = i < stage
+          const active = i === stage
+          return (
+            <div key={i} className="flex items-center">
+              <div className="flex flex-col items-center">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${done ? 'bg-emerald-500 text-white' : active ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                  {done ? '✓' : i + 1}
+                </div>
+                <span className="text-[9px] text-slate-400 mt-0.5 whitespace-nowrap">{label}</span>
+              </div>
+              {i < STEPS.length - 1 && (
+                <div className={`w-6 h-0.5 mb-3.5 ${i < stage ? 'bg-emerald-400' : 'bg-slate-200'}`} />
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 function DayDataBlock({ title, fields, data }: {

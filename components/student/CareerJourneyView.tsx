@@ -45,9 +45,11 @@ export default function CareerJourneyView({
   day1Data, day23Data, day5Data, tutorComment1, tutorComment2, formConfig,
 }: Props) {
   const router = useRouter()
-  const [currentStage] = useState(stage)
+  const currentStage = stage
   const [showRollback, setShowRollback] = useState(false)
   const [editMode, setEditMode] = useState<EditMode>('none')
+  const [formTab, setFormTab] = useState<'form'|'checklist'|'day1'|'day23'>('form')
+  const [reviewTab, setReviewTab] = useState<'checklist'|'day1'|'day23'|'day5'>('checklist')
 
   // ─── 체크리스트 수정 모드: 전체 화면 교체 ────────────────────
   if (currentStage >= 1 && editMode === 'checklist') {
@@ -63,76 +65,146 @@ export default function CareerJourneyView({
     )
   }
 
-  // ─── Stage 2: DAY 2+3 폼 ────────────────────────────────────
+  // ─── Stage 2: DAY 2+3 폼 + 탭 ──────────────────────────────
   if (currentStage === 2) {
     return (
-      <>
-        <Day23FormScreen
-          studentName={studentName}
-          sessionRound={sessionRound}
-          topJob={topJob}
-          initialData={day23Data}
-          tutorComment={tutorComment1}
-          formConfig={formConfig}
-          onComplete={() => router.refresh()}
-          onRollbackRequest={() => setShowRollback(true)}
-        />
-        {showRollback && (
-          <RollbackModal
-            currentStage={currentStage}
-            sessionRound={sessionRound}
-            onClose={() => { setShowRollback(false); router.refresh() }}
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <nav className="bg-white border-b border-slate-100 sticky top-0 z-10 shrink-0">
+          <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
+            <span className="text-sm text-slate-500">{studentName}님</span>
+            <div className="flex gap-0.5 bg-slate-100 p-1 rounded-xl">
+              {(['form','checklist','day1'] as const).map(t => (
+                <button key={t} onClick={() => setFormTab(t)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                    formTab === t ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  }`}>
+                  {t === 'form' ? 'DAY 2+3' : t === 'checklist' ? '체크리스트' : 'DAY 1'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </nav>
+
+        <div className={formTab === 'form' ? 'flex-1 flex flex-col min-h-0' : 'hidden'}>
+          <Day23FormScreen
+            studentName={studentName} sessionRound={sessionRound} topJob={topJob}
+            initialData={day23Data} tutorComment={tutorComment1} formConfig={formConfig}
+            onComplete={() => router.refresh()} onRollbackRequest={() => setShowRollback(true)}
+            suppressNav
           />
+        </div>
+        {formTab === 'checklist' && (
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-2xl mx-auto px-4 py-5">
+              <ChecklistSummaryPanel topJob={topJob} topJobPct={topJobPct} jobPcts={jobPcts} />
+            </div>
+          </div>
         )}
-      </>
+        {formTab === 'day1' && (
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-2xl mx-auto px-4 py-5">
+              <Day1ReviewPanel day1Data={day1Data} formConfig={formConfig} />
+            </div>
+          </div>
+        )}
+
+        {showRollback && (
+          <RollbackModal currentStage={currentStage} sessionRound={sessionRound}
+            onClose={() => { setShowRollback(false); router.refresh() }} />
+        )}
+      </div>
     )
   }
 
-  // ─── Stage 4: DAY 5 폼 ───────────────────────────────────────
+  // ─── Stage 4: DAY 5 폼 + 탭 ────────────────────────────────
   if (currentStage === 4) {
     return (
-      <>
-        <Day5FormScreen
-          studentName={studentName}
-          sessionRound={sessionRound}
-          initialData={day5Data}
-          tutorComment={tutorComment2}
-          onComplete={() => router.refresh()}
-          onRollbackRequest={() => setShowRollback(true)}
-        />
-        {showRollback && (
-          <RollbackModal
-            currentStage={currentStage}
-            sessionRound={sessionRound}
-            onClose={() => { setShowRollback(false); router.refresh() }}
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <nav className="bg-white border-b border-slate-100 sticky top-0 z-10 shrink-0">
+          <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
+            <span className="text-sm text-slate-500">{studentName}님</span>
+            <div className="flex gap-0.5 bg-slate-100 p-1 rounded-xl">
+              {(['form','checklist','day1','day23'] as const).map(t => (
+                <button key={t} onClick={() => setFormTab(t)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                    formTab === t ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  }`}>
+                  {t === 'form' ? 'DAY 5' : t === 'checklist' ? '체크리스트' : t === 'day1' ? 'DAY 1' : 'DAY 2+3'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </nav>
+
+        <div className={formTab === 'form' ? 'flex-1 flex flex-col min-h-0' : 'hidden'}>
+          <Day5FormScreen
+            studentName={studentName} sessionRound={sessionRound}
+            initialData={day5Data} tutorComment={tutorComment2}
+            onComplete={() => router.refresh()} onRollbackRequest={() => setShowRollback(true)}
+            suppressNav
           />
+        </div>
+        {formTab === 'checklist' && (
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-2xl mx-auto px-4 py-5">
+              <ChecklistSummaryPanel topJob={topJob} topJobPct={topJobPct} jobPcts={jobPcts} />
+            </div>
+          </div>
         )}
-      </>
+        {formTab === 'day1' && (
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-2xl mx-auto px-4 py-5">
+              <Day1ReviewPanel day1Data={day1Data} formConfig={formConfig} />
+            </div>
+          </div>
+        )}
+        {formTab === 'day23' && (
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-2xl mx-auto px-4 py-5">
+              <Day23ReviewContent day23Data={day23Data} formConfig={formConfig} />
+            </div>
+          </div>
+        )}
+
+        {showRollback && (
+          <RollbackModal currentStage={currentStage} sessionRound={sessionRound}
+            onClose={() => { setShowRollback(false); router.refresh() }} />
+        )}
+      </div>
     )
   }
 
-  // ─── Stage 1+: 리뷰 화면 ────────────────────────────────────
+  // ─── Stage 1+: 리뷰 화면 (탭) ──────────────────────────────
   if (currentStage >= 1) {
     const topJobColor = topJob ? JOB_COLORS[topJob] : '#64748b'
+    const reviewTabs = [
+      { id: 'checklist' as const, label: '📊 체크리스트' },
+      { id: 'day1' as const, label: '📝 DAY 1' },
+      ...(currentStage >= 3 ? [{ id: 'day23' as const, label: '🗺️ DAY 2+3' }] : []),
+      ...(currentStage >= 5 ? [{ id: 'day5' as const, label: '🏁 DAY 5' }] : []),
+    ]
 
     return (
       <div className="min-h-screen bg-slate-50">
         <nav className="bg-white border-b border-slate-100 sticky top-0 z-10">
-          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="max-w-6xl mx-auto px-4 pt-3 flex items-center justify-between">
             <span className="text-sm text-slate-500">{studentName}님</span>
             <button onClick={() => setShowRollback(true)}
-              className="text-xs text-slate-400 hover:text-amber-600 transition-colors">
-              ↩ 초기화
-            </button>
+              className="text-xs text-slate-400 hover:text-amber-600 transition-colors">↩ 초기화</button>
+          </div>
+          <div className="max-w-6xl mx-auto px-4 flex overflow-x-auto">
+            {reviewTabs.map(t => (
+              <button key={t.id} onClick={() => setReviewTab(t.id)}
+                className={`py-2.5 px-3 text-xs font-medium border-b-2 whitespace-nowrap transition-colors ${
+                  reviewTab === t.id ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-400 hover:text-slate-600'
+                }`}>{t.label}</button>
+            ))}
           </div>
         </nav>
 
         <div className="max-w-5xl mx-auto px-4 py-6 pb-16 lg:flex lg:gap-6 lg:items-start">
-
-          {/* 메인 콘텐츠 */}
           <div className="flex-1 min-w-0 space-y-4">
 
-              {/* 튜터 메모 */}
             {tutorComment1 && (
               <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
                 <p className="text-xs font-semibold text-emerald-700 mb-2">💬 튜터님 메모</p>
@@ -146,51 +218,52 @@ export default function CareerJourneyView({
               </div>
             )}
 
-          {/* 직무 적합도 결과 카드 */}
-            <div className="bg-white rounded-2xl border border-slate-100 p-5">
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-sm font-bold text-slate-800">📊 직무 적합도 결과</p>
-                <button onClick={() => setEditMode('checklist')}
-                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium underline underline-offset-2">
-                  수정하기
-                </button>
-              </div>
-
-              {topJob && (
-                <div className="flex items-center gap-2 rounded-xl px-4 py-2.5 mb-4"
-                  style={{ backgroundColor: `${topJobColor}14` }}>
-                  <span className="text-xs text-slate-500">1위</span>
-                  <span className="text-sm font-bold" style={{ color: topJobColor }}>
-                    {JOB_LABELS_FLAT[topJob]}
-                  </span>
-                  <span className="text-sm font-semibold ml-auto" style={{ color: topJobColor }}>
-                    {topJobPct}%
-                  </span>
+            {reviewTab === 'checklist' && (
+              <div className="bg-white rounded-2xl border border-slate-100 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm font-bold text-slate-800">📊 직무 적합도 결과</p>
+                  <button onClick={() => setEditMode('checklist')}
+                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium underline underline-offset-2">
+                    수정하기
+                  </button>
                 </div>
-              )}
-
-              <div className="space-y-2.5">
-                {JOB_ORDER.map(job => (
-                  <div key={job} className="flex items-center gap-3">
-                    <span className="text-xs text-slate-500 w-20 shrink-0 truncate">
-                      {JOB_LABELS_FLAT[job]}
-                    </span>
-                    <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="h-2 rounded-full transition-all duration-700"
-                        style={{ width: `${jobPcts[job]}%`, backgroundColor: JOB_COLORS[job] }}
-                      />
-                    </div>
-                    <span className="text-xs font-semibold text-slate-600 w-8 text-right shrink-0">
-                      {jobPcts[job]}%
-                    </span>
+                {topJob && (
+                  <div className="flex items-center gap-2 rounded-xl px-4 py-2.5 mb-4"
+                    style={{ backgroundColor: `${topJobColor}14` }}>
+                    <span className="text-xs text-slate-500">1위</span>
+                    <span className="text-sm font-bold" style={{ color: topJobColor }}>{JOB_LABELS_FLAT[topJob]}</span>
+                    <span className="text-sm font-semibold ml-auto" style={{ color: topJobColor }}>{topJobPct}%</span>
                   </div>
-                ))}
+                )}
+                <div className="space-y-2.5">
+                  {JOB_ORDER.map(job => (
+                    <div key={job} className="flex items-center gap-3">
+                      <span className="text-xs text-slate-500 w-20 shrink-0 truncate">{JOB_LABELS_FLAT[job]}</span>
+                      <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                        <div className="h-2 rounded-full transition-all duration-700"
+                          style={{ width: `${jobPcts[job]}%`, backgroundColor: JOB_COLORS[job] }} />
+                      </div>
+                      <span className="text-xs font-semibold text-slate-600 w-8 text-right shrink-0">{jobPcts[job]}%</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* DAY 2+3 카드 (stage 3 이상) */}
-            {currentStage >= 3 && (
+            {reviewTab === 'day1' && (
+              <div className="bg-white rounded-2xl border border-slate-100 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm font-bold text-slate-800">📝 DAY 1 나의 경험</p>
+                  <button onClick={() => setEditMode('day1')}
+                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium underline underline-offset-2">
+                    수정하기
+                  </button>
+                </div>
+                <Day1ReviewPanel day1Data={day1Data} formConfig={formConfig} />
+              </div>
+            )}
+
+            {reviewTab === 'day23' && currentStage >= 3 && (
               <div className="bg-white rounded-2xl border border-slate-100 p-5">
                 <div className="flex items-center justify-between mb-4">
                   <p className="text-sm font-bold text-slate-800">🗺️ DAY 2+3 마케터 탐색 + 취업 방향</p>
@@ -199,29 +272,11 @@ export default function CareerJourneyView({
                     수정하기
                   </button>
                 </div>
-                <div className="space-y-4">
-                  {([
-                    { key: 'target_job_1',       label: '🥇 1순위 직무',          val: day23Data.target_job_1 },
-                    { key: 'target_job_2',       label: '🥈 2순위 직무',          val: day23Data.target_job_2 },
-                    { key: 'strengths',          label: '💪 강점 초안',           val: day23Data.strengths },
-                    { key: 'marketer_sentence',  label: '✍️ 나는 어떤 마케터인가', val: day23Data.marketer_sentence },
-                    { key: 'compass_draft',      label: '🧭 취업 나침반 초안',     val: day23Data.compass_draft },
-                  ] as const).map(({ key, label, val }) => (
-                    <div key={key}>
-                      <p className="text-xs font-semibold text-slate-400 mb-1">{label}</p>
-                      {val?.trim() ? (
-                        <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{val}</p>
-                      ) : (
-                        <p className="text-sm text-slate-300 italic">작성하지 않았어요</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                <Day23ReviewContent day23Data={day23Data} formConfig={formConfig} />
               </div>
             )}
 
-            {/* DAY 5 카드 (stage 5 이상) */}
-            {currentStage >= 5 && (
+            {reviewTab === 'day5' && currentStage >= 5 && (
               <div className="bg-white rounded-2xl border border-slate-100 p-5">
                 <div className="flex items-center justify-between mb-4">
                   <p className="text-sm font-bold text-slate-800">🏁 DAY 5 나의 취업 나침반</p>
@@ -239,121 +294,277 @@ export default function CareerJourneyView({
                   ] as const).map(({ key, label, val }) => (
                     <div key={key}>
                       <p className="text-xs font-semibold text-slate-400 mb-1">{label}</p>
-                      {val?.trim() ? (
-                        <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{val}</p>
-                      ) : (
-                        <p className="text-sm text-slate-300 italic">작성하지 않았어요</p>
-                      )}
+                      {val?.trim()
+                        ? <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{val}</p>
+                        : <p className="text-sm text-slate-300 italic">작성하지 않았어요</p>}
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* DAY 1 카드 */}
-            <div className="bg-white rounded-2xl border border-slate-100 p-5">
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-sm font-bold text-slate-800">📝 DAY 1 나의 경험</p>
-                <button onClick={() => setEditMode('day1')}
-                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium underline underline-offset-2">
-                  수정하기
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {(formConfig?.day1 ?? DEFAULT_FORM_CONFIG.day1).sections.flatMap(section =>
-                  section.fields
-                    .filter(f => f.type !== 'subtitle')
-                    .map(f => ({
-                      id: f.id,
-                      label: f.label,
-                      val: FIXED_DAY1_IDS.has(f.id)
-                        ? ((day1Data[f.id as keyof Day1Data] as string) ?? '')
-                        : (day1Data.extra_fields?.[f.id] ?? ''),
-                    }))
-                ).map(({ id, label, val }) => (
-                  <div key={id}>
-                    <p className="text-xs font-semibold text-slate-400 mb-1">{label}</p>
-                    {val?.trim() ? (
-                      <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{val}</p>
-                    ) : (
-                      <p className="text-sm text-slate-300 italic">작성하지 않았어요</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
           </div>
 
-          {/* 사이드바: 다음에 해볼 것들 */}
           <div className="w-full lg:w-64 shrink-0 mt-4 lg:mt-0 lg:sticky lg:top-20">
             <div className="bg-white rounded-2xl border border-slate-100 p-4">
               <p className="text-sm font-bold text-slate-800 mb-1">✅ 다음에 해볼 것들</p>
               <p className="text-xs text-slate-400 mb-4 leading-relaxed">
                 경험 정리가 끝났으면 아래 항목들을 틈틈이 해보세요. 완료하면 체크!
               </p>
-              <NextStepsChecklist
-                initialNextSteps={day1Data.next_steps ?? {}}
-                sessionRound={sessionRound}
-              />
+              <NextStepsChecklist initialNextSteps={day1Data.next_steps ?? {}} sessionRound={sessionRound} />
             </div>
           </div>
-
         </div>
 
-        {/* DAY1 수정 오버레이 */}
         {editMode === 'day1' && (
-          <Day1FormScreen
-            topJob={topJob}
-            sessionRound={sessionRound}
-            initialDay1={day1Data}
-            formConfig={formConfig}
-            onComplete={() => { setEditMode('none'); router.refresh() }}
-            onClose={() => setEditMode('none')}
-          />
+          <Day1FormScreen topJob={topJob} sessionRound={sessionRound} initialDay1={day1Data}
+            formConfig={formConfig} onComplete={() => { setEditMode('none'); router.refresh() }}
+            onClose={() => setEditMode('none')} />
         )}
-
-        {/* DAY2+3 수정 오버레이 */}
         {editMode === 'day23' && (
-          <Day23FormScreen
-            studentName={studentName}
-            sessionRound={sessionRound}
-            topJob={topJob}
-            initialData={day23Data}
-            tutorComment={tutorComment1}
-            formConfig={formConfig}
+          <Day23FormScreen studentName={studentName} sessionRound={sessionRound} topJob={topJob}
+            initialData={day23Data} tutorComment={tutorComment1} formConfig={formConfig}
             onComplete={() => { setEditMode('none'); router.refresh() }}
             onSave={(d) => updateDay23Data(sessionRound, d)}
-            onRollbackRequest={() => setEditMode('none')}
-          />
+            onRollbackRequest={() => setEditMode('none')} />
         )}
-
-        {/* DAY5 수정 오버레이 */}
         {editMode === 'day5' && (
-          <Day5FormScreen
-            studentName={studentName}
-            sessionRound={sessionRound}
-            initialData={day5Data}
-            tutorComment={tutorComment2}
+          <Day5FormScreen studentName={studentName} sessionRound={sessionRound}
+            initialData={day5Data} tutorComment={tutorComment2}
             onComplete={() => { setEditMode('none'); router.refresh() }}
             onSave={(d) => updateDay5Data(sessionRound, d)}
-            onRollbackRequest={() => setEditMode('none')}
-          />
+            onRollbackRequest={() => setEditMode('none')} />
         )}
-
         {showRollback && (
-          <RollbackModal
-            currentStage={currentStage}
-            sessionRound={sessionRound}
-            onClose={() => setShowRollback(false)}
-          />
+          <RollbackModal currentStage={currentStage} sessionRound={sessionRound}
+            onClose={() => setShowRollback(false)} />
         )}
       </div>
     )
   }
 
   return null
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 리뷰 패널 헬퍼 컴포넌트
+// ══════════════════════════════════════════════════════════════════
+
+function ReadonlyCheck({ checked }: { checked: boolean }) {
+  return (
+    <div className={`w-4 h-4 rounded border-2 inline-flex items-center justify-center mx-auto ${
+      checked ? 'bg-emerald-500 border-emerald-500' : 'border-slate-200'
+    }`}>
+      {checked && (
+        <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      )}
+    </div>
+  )
+}
+
+function ChecklistSummaryPanel({ topJob, topJobPct, jobPcts }: {
+  topJob: JobType | null; topJobPct: number; jobPcts: Record<JobType, number>
+}) {
+  const topJobColor = topJob ? JOB_COLORS[topJob] : '#64748b'
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 p-5 space-y-3">
+      <p className="text-sm font-bold text-slate-800">📊 직무 적합도 결과</p>
+      {topJob && (
+        <div className="flex items-center gap-2 rounded-xl px-4 py-2.5"
+          style={{ backgroundColor: `${topJobColor}14` }}>
+          <span className="text-xs text-slate-500">1위</span>
+          <span className="text-sm font-bold" style={{ color: topJobColor }}>{JOB_LABELS_FLAT[topJob]}</span>
+          <span className="text-sm font-semibold ml-auto" style={{ color: topJobColor }}>{topJobPct}%</span>
+        </div>
+      )}
+      <div className="space-y-2.5">
+        {JOB_ORDER.map(job => (
+          <div key={job} className="flex items-center gap-3">
+            <span className="text-xs text-slate-500 w-20 shrink-0 truncate">{JOB_LABELS_FLAT[job]}</span>
+            <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+              <div className="h-2 rounded-full" style={{ width: `${jobPcts[job]}%`, backgroundColor: JOB_COLORS[job] }} />
+            </div>
+            <span className="text-xs font-semibold text-slate-600 w-8 text-right shrink-0">{jobPcts[job]}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Day1ReviewPanel({ day1Data, formConfig }: { day1Data: Day1Data; formConfig?: FormConfig }) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 p-5 space-y-4">
+      <p className="text-sm font-bold text-slate-800">📝 DAY 1 나의 경험</p>
+      {(formConfig?.day1 ?? DEFAULT_FORM_CONFIG.day1).sections.flatMap(section =>
+        section.fields.filter(f => f.type !== 'subtitle').map(f => ({
+          id: f.id,
+          label: f.label,
+          val: FIXED_DAY1_IDS.has(f.id)
+            ? ((day1Data[f.id as keyof Day1Data] as string) ?? '')
+            : (day1Data.extra_fields?.[f.id] ?? ''),
+        }))
+      ).map(({ id, label, val }) => (
+        <div key={id}>
+          <p className="text-xs font-semibold text-slate-400 mb-1">{label}</p>
+          {val?.trim()
+            ? <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{val}</p>
+            : <p className="text-sm text-slate-300 italic">작성하지 않았어요</p>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export function Day23ReviewContent({ day23Data, formConfig }: { day23Data: Day23Data; formConfig?: FormConfig }) {
+  const cfg = formConfig?.day23 ?? DEFAULT_FORM_CONFIG.day23
+  return (
+    <div className="space-y-5">
+      {/* 커리큘럼 체크 표 */}
+      <div>
+        <p className="text-xs font-semibold text-slate-600 mb-2">📚 커리큘럼 체크</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs border-collapse min-w-[480px]">
+            <thead>
+              <tr className="bg-slate-50">
+                <th className="text-left px-2 py-1.5 font-semibold text-slate-600 border-b border-slate-200 w-[38%]">영역</th>
+                <th className="px-2 py-1.5 font-semibold text-slate-600 border-b border-slate-200 text-center w-16">흥미로웠다</th>
+                <th className="px-2 py-1.5 font-semibold text-slate-600 border-b border-slate-200 text-center w-12">잘했다</th>
+                <th className="px-2 py-1.5 font-semibold text-slate-600 border-b border-slate-200 text-center w-12">별로였다</th>
+                <th className="px-2 py-1.5 font-semibold text-slate-600 border-b border-slate-200">한 줄 코멘트</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cfg.curriculum_areas.map((area, i) => {
+                const row = day23Data.curriculum[i] ?? { interesting: false, good_at: false, boring: false, comment: '' }
+                return (
+                  <tr key={area} className="border-b border-slate-100 last:border-0">
+                    <td className="px-2 py-1.5 text-slate-700">{area}</td>
+                    <td className="px-2 py-1.5 text-center"><ReadonlyCheck checked={row.interesting} /></td>
+                    <td className="px-2 py-1.5 text-center"><ReadonlyCheck checked={row.good_at} /></td>
+                    <td className="px-2 py-1.5 text-center"><ReadonlyCheck checked={row.boring} /></td>
+                    <td className="px-2 py-1.5 text-slate-600 leading-snug">
+                      {row.comment || <span className="text-slate-300">-</span>}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 업무 스타일 표 */}
+      <div>
+        <p className="text-xs font-semibold text-slate-600 mb-2">🎯 업무 스타일</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs border-collapse min-w-[400px]">
+            <thead>
+              <tr className="bg-slate-50">
+                <th className="px-2 py-1.5 font-semibold text-slate-600 border-b border-slate-200 text-right w-[30%]">A</th>
+                <th className="px-2 py-1.5 font-semibold text-slate-600 border-b border-slate-200 text-center w-12">점수</th>
+                <th className="px-2 py-1.5 font-semibold text-slate-600 border-b border-slate-200 text-left w-[30%]">B</th>
+                <th className="px-2 py-1.5 font-semibold text-slate-600 border-b border-slate-200">코멘트</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cfg.work_style_items.map((item, i) => {
+                const row = day23Data.work_style[i] ?? { score: '', comment: '' }
+                return (
+                  <tr key={i} className="border-b border-slate-100 last:border-0">
+                    <td className="px-2 py-1.5 text-slate-700 text-right">{item.a}</td>
+                    <td className="px-2 py-1.5 text-center">
+                      {row.score
+                        ? <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-blue-100 text-blue-700 font-bold">{row.score}</span>
+                        : <span className="text-slate-300">-</span>}
+                    </td>
+                    <td className="px-2 py-1.5 text-slate-700">{item.b}</td>
+                    <td className="px-2 py-1.5 text-slate-600 leading-snug">
+                      {row.comment || <span className="text-slate-300">-</span>}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 텍스트 필드들 */}
+      {([
+        { key: 'strengths',          label: '💪 강점 초안' },
+        { key: 'marketer_sentence',  label: '✍️ 나는 어떤 마케터인가' },
+        { key: 'target_job_1',       label: '🥇 1순위 직무' },
+        { key: 'target_job_2',       label: '🥈 2순위 직무' },
+        { key: 'industries',         label: '🏭 관심 산업' },
+        { key: 'industry_connection',label: '🔗 DAY1 경험 연결' },
+      ] as { key: keyof Day23Data; label: string }[]).map(({ key, label }) => {
+        const val = day23Data[key] as string
+        return val?.trim() ? (
+          <div key={key}>
+            <p className="text-xs font-semibold text-slate-400 mb-1">{label}</p>
+            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{val}</p>
+          </div>
+        ) : null
+      })}
+
+      {/* 일하고 싶은 환경 */}
+      {(day23Data.work_env_type.some(r => r.choice) || day23Data.work_env_size.some(r => r.choice)) && (
+        <div>
+          <p className="text-xs font-semibold text-slate-600 mb-2">🏢 일하고 싶은 환경</p>
+          <div className="space-y-3">
+            {[
+              { label: '대행사 vs 인하우스', items: cfg.work_env_type_items, rows: day23Data.work_env_type },
+              { label: '회사 규모', items: cfg.work_env_size_items, rows: day23Data.work_env_size },
+            ].map(({ label, items, rows }) => (
+              <div key={label}>
+                <p className="text-[11px] font-medium text-slate-500 mb-1">{label}</p>
+                <table className="w-full text-xs border-collapse">
+                  <tbody>
+                    {items.map((item, i) => {
+                      const row = rows[i] ?? { choice: '', reason: '' }
+                      return (
+                        <tr key={item.label} className="border-b border-slate-100 last:border-0">
+                          <td className="py-1.5 pr-2 font-medium text-slate-700 w-20">{item.label}</td>
+                          <td className="py-1.5 pr-3 w-8">
+                            {row.choice ? (
+                              <span className={`text-xs font-bold ${row.choice === 'O' ? 'text-emerald-600' : 'text-red-400'}`}>{row.choice}</span>
+                            ) : <span className="text-slate-300">-</span>}
+                          </td>
+                          <td className="py-1.5 text-slate-600">{row.reason || <span className="text-slate-300">-</span>}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 목표 JD */}
+      {day23Data.target_jd_url?.trim() && (
+        <div>
+          <p className="text-xs font-semibold text-slate-400 mb-1">📄 목표 JD 링크</p>
+          <p className="text-sm text-blue-600 break-all">{day23Data.target_jd_url}</p>
+          {day23Data.target_jd_note?.trim() && (
+            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed mt-1">{day23Data.target_jd_note}</p>
+          )}
+        </div>
+      )}
+
+      {/* 취업 나침반 초안 */}
+      {day23Data.compass_draft?.trim() && (
+        <div>
+          <p className="text-xs font-semibold text-slate-400 mb-1">🧭 취업 나침반 초안</p>
+          <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{day23Data.compass_draft}</p>
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -487,7 +698,7 @@ function Area({ value, onChange, placeholder, rows = 4 }: {
   )
 }
 
-export function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutorComment, formConfig, onComplete, onSave, onRollbackRequest }: {
+export function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutorComment, formConfig, onComplete, onSave, onRollbackRequest, suppressNav }: {
   studentName: string
   sessionRound: number
   topJob: JobType | null
@@ -497,6 +708,7 @@ export function Day23FormScreen({ studentName, sessionRound, topJob, initialData
   onComplete: () => void
   onSave?: (data: Day23Data) => Promise<{ error?: string } | null | undefined>
   onRollbackRequest?: () => void
+  suppressNav?: boolean
 }) {
   const cfg = formConfig?.day23 ?? DEFAULT_FORM_CONFIG.day23
   const [data, setData] = useState<Day23Data>(initialData)
@@ -536,15 +748,17 @@ export function Day23FormScreen({ studentName, sessionRound, topJob, initialData
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <nav className="bg-white border-b border-slate-100 sticky top-0 z-10 shrink-0">
-        <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between">
-          <span className="text-sm text-slate-500">{studentName}님</span>
-          {onRollbackRequest ? (
-            <button onClick={onRollbackRequest} className="text-xs text-slate-400 hover:text-amber-600 transition-colors">↩ 수정하기</button>
-          ) : <span />}
-        </div>
-      </nav>
+    <div className={suppressNav ? 'flex-1 flex flex-col min-h-0' : 'min-h-screen bg-slate-50 flex flex-col'}>
+      {!suppressNav && (
+        <nav className="bg-white border-b border-slate-100 sticky top-0 z-10 shrink-0">
+          <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between">
+            <span className="text-sm text-slate-500">{studentName}님</span>
+            {onRollbackRequest ? (
+              <button onClick={onRollbackRequest} className="text-xs text-slate-400 hover:text-amber-600 transition-colors">↩ 수정하기</button>
+            ) : <span />}
+          </div>
+        </nav>
+      )}
 
       <div className="bg-white border-b border-slate-100 px-4 py-3 shrink-0">
         <div className="flex items-center gap-2 mb-0.5">
@@ -858,7 +1072,7 @@ const PRE_CHECKLIST_ITEMS = [
   '나의 취업 나침반 한 장이 완성됐다',
 ]
 
-function Day5FormScreen({ studentName, sessionRound, initialData, tutorComment, onComplete, onSave, onRollbackRequest }: {
+function Day5FormScreen({ studentName, sessionRound, initialData, tutorComment, onComplete, onSave, onRollbackRequest, suppressNav }: {
   studentName: string
   sessionRound: number
   initialData: Day5Data
@@ -866,6 +1080,7 @@ function Day5FormScreen({ studentName, sessionRound, initialData, tutorComment, 
   onComplete: () => void
   onSave?: (data: Day5Data) => Promise<{ error?: string } | null | undefined>
   onRollbackRequest?: () => void
+  suppressNav?: boolean
 }) {
   const [data, setData] = useState<Day5Data>(initialData)
   const [isPending, startTransition] = useTransition()
@@ -893,17 +1108,19 @@ function Day5FormScreen({ studentName, sessionRound, initialData, tutorComment, 
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <nav className="bg-white border-b border-slate-100 sticky top-0 z-10 shrink-0">
-        <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between">
-          <span className="text-sm text-slate-500">{studentName}님</span>
-          {onRollbackRequest ? (
-            <button onClick={onRollbackRequest} className="text-xs text-slate-400 hover:text-amber-600 transition-colors">
-              ↩ 수정하기
-            </button>
-          ) : <span />}
-        </div>
-      </nav>
+    <div className={suppressNav ? 'flex-1 flex flex-col min-h-0' : 'min-h-screen bg-slate-50 flex flex-col'}>
+      {!suppressNav && (
+        <nav className="bg-white border-b border-slate-100 sticky top-0 z-10 shrink-0">
+          <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between">
+            <span className="text-sm text-slate-500">{studentName}님</span>
+            {onRollbackRequest ? (
+              <button onClick={onRollbackRequest} className="text-xs text-slate-400 hover:text-amber-600 transition-colors">
+                ↩ 수정하기
+              </button>
+            ) : <span />}
+          </div>
+        </nav>
+      )}
 
       <div className="bg-white border-b border-slate-100 px-4 py-3 shrink-0">
         <div className="flex items-center gap-2 mb-0.5">

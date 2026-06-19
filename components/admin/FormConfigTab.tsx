@@ -217,7 +217,11 @@ function SectionEditor({ section, onUpdate, onDelete }: {
   )
 }
 
-// ── 문자열 배열 편집기 ────────────────────────────────────────────
+// ── 문자열 배열 편집기 (커리큘럼 영역 — 테이블 형태) ──────────────
+
+function DisabledCheck() {
+  return <div className="w-4 h-4 rounded border-2 border-slate-200 inline-block" />
+}
 
 function StringListEditor({ title, items, onChange }: {
   title: string
@@ -229,22 +233,38 @@ function StringListEditor({ title, items, onChange }: {
       <div className="bg-slate-50 px-4 py-2 border-b border-slate-100">
         <p className="text-xs font-bold text-slate-600">{title}</p>
       </div>
-      <div className="divide-y divide-slate-50">
-        {items.map((item, i) => (
-          <div key={i} className="px-4 py-3">
-            <p className="text-[10px] font-semibold text-slate-400 mb-1.5">{i + 1}번</p>
-            <EditableText
-              value={item}
-              onSave={v => { const next = [...items]; next[i] = v; onChange(next) }}
-            />
-          </div>
-        ))}
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs min-w-[480px]">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-100">
+              <th className="text-left px-3 py-2 font-semibold text-slate-600">영역 (클릭해서 수정)</th>
+              <th className="px-3 py-2 font-semibold text-slate-300 text-center w-16">흥미로웠다</th>
+              <th className="px-3 py-2 font-semibold text-slate-300 text-center w-12">잘했다</th>
+              <th className="px-3 py-2 font-semibold text-slate-300 text-center w-12">별로였다</th>
+              <th className="px-3 py-2 font-semibold text-slate-300 text-left">한 줄 코멘트</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {items.map((item, i) => (
+              <tr key={i}>
+                <td className="px-3 py-2">
+                  <EditableText value={item}
+                    onSave={v => { const next = [...items]; next[i] = v; onChange(next) }} />
+                </td>
+                <td className="px-3 py-2 text-center"><DisabledCheck /></td>
+                <td className="px-3 py-2 text-center"><DisabledCheck /></td>
+                <td className="px-3 py-2 text-center"><DisabledCheck /></td>
+                <td className="px-3 py-2 text-slate-300 italic">작성 칸</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )
 }
 
-// ── 업무 스타일 편집기 ────────────────────────────────────────────
+// ── 업무 스타일 편집기 (테이블 형태) ─────────────────────────────
 
 function WorkStyleEditor({ items, onChange }: {
   items: { a: string; b: string }[]
@@ -253,26 +273,35 @@ function WorkStyleEditor({ items, onChange }: {
   return (
     <div className="border border-slate-100 rounded-xl overflow-hidden">
       <div className="bg-slate-50 px-4 py-2 border-b border-slate-100">
-        <p className="text-xs font-bold text-slate-600">업무 스타일 항목</p>
+        <p className="text-xs font-bold text-slate-600">업무 스타일 항목 (클릭해서 수정)</p>
       </div>
-      <div className="divide-y divide-slate-50">
-        {items.map((item, i) => (
-          <div key={i} className="px-4 py-3 space-y-2">
-            <p className="text-[10px] font-semibold text-slate-400">{i + 1}번 쌍</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-[10px] text-slate-400 mb-1">A 쪽</p>
-                <EditableText value={item.a}
-                  onSave={v => { const next = [...items]; next[i] = { ...next[i], a: v }; onChange(next) }} />
-              </div>
-              <div>
-                <p className="text-[10px] text-slate-400 mb-1">B 쪽</p>
-                <EditableText value={item.b}
-                  onSave={v => { const next = [...items]; next[i] = { ...next[i], b: v }; onChange(next) }} />
-              </div>
-            </div>
-          </div>
-        ))}
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs min-w-[400px]">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-100">
+              <th className="px-3 py-2 font-semibold text-slate-600 text-right w-[35%]">A 쪽</th>
+              <th className="px-3 py-2 font-semibold text-slate-300 text-center w-16">점수 (1→5)</th>
+              <th className="px-3 py-2 font-semibold text-slate-600 text-left w-[35%]">B 쪽</th>
+              <th className="px-3 py-2 font-semibold text-slate-300 text-left">코멘트</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {items.map((item, i) => (
+              <tr key={i}>
+                <td className="px-3 py-2 text-right">
+                  <EditableText value={item.a}
+                    onSave={v => { const next = [...items]; next[i] = { ...next[i], a: v }; onChange(next) }} />
+                </td>
+                <td className="px-3 py-2 text-center text-slate-300 italic">1→5</td>
+                <td className="px-3 py-2">
+                  <EditableText value={item.b}
+                    onSave={v => { const next = [...items]; next[i] = { ...next[i], b: v }; onChange(next) }} />
+                </td>
+                <td className="px-3 py-2 text-slate-300 italic">작성 칸</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )
