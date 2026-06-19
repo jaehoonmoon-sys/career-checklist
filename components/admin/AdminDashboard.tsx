@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { JOB_LABELS_FLAT, type JobType } from '@/lib/survey-questions'
 import type { StudentRow } from '@/app/actions/admin'
 import type { FormConfig } from '@/lib/form-config'
+import { openDayAccessGlobal, closeDayAccessGlobal } from '@/app/actions/admin'
 import StudentDetailModal from './StudentDetailModal'
 import FormConfigTab from './FormConfigTab'
 
@@ -78,6 +80,31 @@ export default function AdminDashboard({
     ? Math.round((completed.length / students.length) * 100)
     : 0
 
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [stageConfirm, setStageConfirm] = useState<{
+    day: '23' | '5'
+    action: 'open' | 'close'
+    step: 1 | 2
+  } | null>(null)
+
+  const stage1Count = useMemo(() => students.filter(s => (s.stage ?? 0) === 1).length, [students])
+  const stage2Count = useMemo(() => students.filter(s => (s.stage ?? 0) === 2).length, [students])
+  const stage3Count = useMemo(() => students.filter(s => (s.stage ?? 0) === 3).length, [students])
+  const stage4Count = useMemo(() => students.filter(s => (s.stage ?? 0) === 4).length, [students])
+
+  const handleGlobalStageChange = (day: '23' | '5', action: 'open' | 'close') => {
+    startTransition(async () => {
+      const result = action === 'open'
+        ? await openDayAccessGlobal(day)
+        : await closeDayAccessGlobal(day)
+      if (result.success) {
+        setStageConfirm(null)
+        router.refresh()
+      }
+    })
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* 상단 네비 */}
@@ -119,6 +146,92 @@ export default function AdminDashboard({
       {/* 수강생 현황 탭 */}
       {mainTab === 'students' && (
       <div className="max-w-7xl mx-auto px-4 py-5 space-y-4">
+
+        {/* 단계 접근 제어 */}
+        <div className="bg-white rounded-2xl border border-amber-100 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-amber-700">🔑 단계 접근 제어</p>
+            <div className="flex items-center gap-3 text-[11px] text-slate-400">
+              {stage1Count > 0 && <span>DAY1 완료 대기 {stage1Count}명</span>}
+              {stage2Count > 0 && <span>DAY2+3 진행 중 {stage2Count}명</span>}
+              {stage3Count > 0 && <span>DAY2+3 완료 대기 {stage3Count}명</span>}
+              {stage4Count > 0 && <span>DAY5 진행 중 {stage4Count}명</span>}
+            </div>
+          </div>
+
+          {stageConfirm ? (
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">
+                {stageConfirm.step === 1 ? '확인 1/2' : '확인 2/2 — 마지막 확인'}
+              </p>
+              <p className="text-sm font-semibold text-slate-800">
+                {stageConfirm.action === 'open'
+                  ? `DAY ${stageConfirm.day === '23' ? '2+3' : '5'} — DAY1 완료 수강생 전원에게 열겠습니까?`
+                  : `DAY ${stageConfirm.day === '23' ? '2+3' : '5'} — 현재 진행 중인 수강생 전원의 접근을 닫겠습니까?`
+                }
+              </p>
+              {stageConfirm.step === 2 && (
+                <p className="text-xs text-slate-500">
+                  {stageConfirm.action === 'open'
+                    ? `DAY${stageConfirm.day === '23' ? '1' : '2+3'} 완료 수강생 ${stageConfirm.day === '23' ? stage1Count : stage3Count}명에게 즉시 다음 단계가 열립니다.`
+                    : `현재 DAY ${stageConfirm.day === '23' ? '2+3' : '5'} 진행 중인 수강생 ${stageConfirm.day === '23' ? stage2Count : stage4Count}명의 접근이 즉시 차단됩니다.`
+                  }
+                </p>
+              )}
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setStageConfirm(null)}
+                  className="flex-1 border border-slate-200 text-slate-600 text-xs font-semibold py-2 rounded-lg hover:bg-slate-50">
+                  취소
+                </button>
+                <button
+                  onClick={() => {
+                    if (stageConfirm.step === 1) {
+                      setStageConfirm({ ...stageConfirm, step: 2 })
+                    } else {
+                      handleGlobalStageChange(stageConfirm.day, stageConfirm.action)
+                    }
+                  }}
+                  disabled={isPending}
+                  className={`flex-1 text-white text-xs font-semibold py-2 rounded-lg disabled:opacity-50 transition-colors ${
+                    stageConfirm.action === 'open' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-amber-500 hover:bg-amber-600'
+                  }`}>
+                  {stageConfirm.step === 1 ? '예, 계속하기 →' : (stageConfirm.action === 'open' ? '예, 전체 열기' : '예, 전체 닫기')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button
+                onClick={() => setStageConfirm({ day: '23', action: 'open', step: 1 })}
+                disabled={stage1Count === 0}
+                className="border-2 border-blue-200 text-blue-700 text-xs font-semibold py-2.5 rounded-xl hover:bg-blue-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                🔓 DAY 2+3 전체 열기
+                {stage1Count > 0 && <span className="block text-[10px] font-normal mt-0.5">{stage1Count}명 대기 중</span>}
+              </button>
+              <button
+                onClick={() => setStageConfirm({ day: '23', action: 'close', step: 1 })}
+                disabled={stage2Count === 0}
+                className="border-2 border-amber-200 text-amber-700 text-xs font-semibold py-2.5 rounded-xl hover:bg-amber-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                🔒 DAY 2+3 전체 닫기
+                {stage2Count > 0 && <span className="block text-[10px] font-normal mt-0.5">{stage2Count}명 진행 중</span>}
+              </button>
+              <button
+                onClick={() => setStageConfirm({ day: '5', action: 'open', step: 1 })}
+                disabled={stage3Count === 0}
+                className="border-2 border-blue-200 text-blue-700 text-xs font-semibold py-2.5 rounded-xl hover:bg-blue-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                🔓 DAY 5 전체 열기
+                {stage3Count > 0 && <span className="block text-[10px] font-normal mt-0.5">{stage3Count}명 대기 중</span>}
+              </button>
+              <button
+                onClick={() => setStageConfirm({ day: '5', action: 'close', step: 1 })}
+                disabled={stage4Count === 0}
+                className="border-2 border-amber-200 text-amber-700 text-xs font-semibold py-2.5 rounded-xl hover:bg-amber-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                🔒 DAY 5 전체 닫기
+                {stage4Count > 0 && <span className="block text-[10px] font-normal mt-0.5">{stage4Count}명 진행 중</span>}
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* 통계 요약 */}
         <div className="grid grid-cols-3 gap-3">

@@ -63,6 +63,54 @@ export default function CareerJourneyView({
     )
   }
 
+  // ─── Stage 2: DAY 2+3 폼 ────────────────────────────────────
+  if (currentStage === 2) {
+    return (
+      <>
+        <Day23FormScreen
+          studentName={studentName}
+          sessionRound={sessionRound}
+          topJob={topJob}
+          initialData={day23Data}
+          tutorComment={tutorComment1}
+          formConfig={formConfig}
+          onComplete={() => router.refresh()}
+          onRollbackRequest={() => setShowRollback(true)}
+        />
+        {showRollback && (
+          <RollbackModal
+            currentStage={currentStage}
+            sessionRound={sessionRound}
+            onClose={() => { setShowRollback(false); router.refresh() }}
+          />
+        )}
+      </>
+    )
+  }
+
+  // ─── Stage 4: DAY 5 폼 ───────────────────────────────────────
+  if (currentStage === 4) {
+    return (
+      <>
+        <Day5FormScreen
+          studentName={studentName}
+          sessionRound={sessionRound}
+          initialData={day5Data}
+          tutorComment={tutorComment2}
+          onComplete={() => router.refresh()}
+          onRollbackRequest={() => setShowRollback(true)}
+        />
+        {showRollback && (
+          <RollbackModal
+            currentStage={currentStage}
+            sessionRound={sessionRound}
+            onClose={() => { setShowRollback(false); router.refresh() }}
+          />
+        )}
+      </>
+    )
+  }
+
   // ─── Stage 1+: 리뷰 화면 ────────────────────────────────────
   if (currentStage >= 1) {
     const topJobColor = topJob ? JOB_COLORS[topJob] : '#64748b'
@@ -84,7 +132,21 @@ export default function CareerJourneyView({
           {/* 메인 콘텐츠 */}
           <div className="flex-1 min-w-0 space-y-4">
 
-            {/* 직무 적합도 결과 카드 */}
+              {/* 튜터 메모 */}
+            {tutorComment1 && (
+              <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
+                <p className="text-xs font-semibold text-emerald-700 mb-2">💬 튜터님 메모</p>
+                <p className="text-sm text-emerald-800 whitespace-pre-wrap leading-relaxed break-words">{tutorComment1}</p>
+              </div>
+            )}
+            {tutorComment2 && currentStage >= 3 && (
+              <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4">
+                <p className="text-xs font-semibold text-purple-700 mb-2">💬 2차 면담 메모</p>
+                <p className="text-sm text-purple-800 whitespace-pre-wrap leading-relaxed break-words">{tutorComment2}</p>
+              </div>
+            )}
+
+          {/* 직무 적합도 결과 카드 */}
             <div className="bg-white rounded-2xl border border-slate-100 p-5">
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm font-bold text-slate-800">📊 직무 적합도 결과</p>

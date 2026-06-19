@@ -248,3 +248,45 @@ export async function closeDayAccess(
   revalidatePath('/student')
   return { success: true }
 }
+
+export async function openDayAccessGlobal(
+  day: '23' | '5',
+): Promise<{ success: boolean; count?: number; error?: string }> {
+  const adminClient = createAdminClient()
+  const targetStage = day === '23' ? 2 : 4
+  const requiredStage = day === '23' ? 1 : 3
+
+  const { data, error } = await adminClient
+    .from('cc_checklist_responses')
+    .update({ stage: targetStage })
+    .eq('session_round', 1)
+    .eq('stage', requiredStage)
+    .select('student_id')
+
+  if (error) return { success: false, error: '처리 중 오류가 발생했습니다.' }
+
+  revalidatePath('/admin')
+  revalidatePath('/student')
+  return { success: true, count: (data ?? []).length }
+}
+
+export async function closeDayAccessGlobal(
+  day: '23' | '5',
+): Promise<{ success: boolean; count?: number; error?: string }> {
+  const adminClient = createAdminClient()
+  const exactStage = day === '23' ? 2 : 4
+  const prevStage = day === '23' ? 1 : 3
+
+  const { data, error } = await adminClient
+    .from('cc_checklist_responses')
+    .update({ stage: prevStage })
+    .eq('session_round', 1)
+    .eq('stage', exactStage)
+    .select('student_id')
+
+  if (error) return { success: false, error: '처리 중 오류가 발생했습니다.' }
+
+  revalidatePath('/admin')
+  revalidatePath('/student')
+  return { success: true, count: (data ?? []).length }
+}
