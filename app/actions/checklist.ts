@@ -135,6 +135,40 @@ export async function saveDay5(sessionRound: number, data: Day5Data) {
   return { success: true }
 }
 
+export async function updateDay23Data(sessionRound: number, data: Day23Data) {
+  const cookieStore = await cookies()
+  const studentId = cookieStore.get('cc_student_id')?.value
+  if (!studentId) return { error: '로그인이 필요합니다.' }
+
+  const adminClient = createAdminClient()
+  const { error } = await adminClient
+    .from('cc_checklist_responses')
+    .update({ day23_data: data })
+    .eq('student_id', Number(studentId))
+    .eq('session_round', sessionRound)
+
+  if (error) return { error: '저장 중 오류가 발생했습니다.' }
+  revalidatePath('/student')
+  return { success: true }
+}
+
+export async function updateDay5Data(sessionRound: number, data: Day5Data) {
+  const cookieStore = await cookies()
+  const studentId = cookieStore.get('cc_student_id')?.value
+  if (!studentId) return { error: '로그인이 필요합니다.' }
+
+  const adminClient = createAdminClient()
+  const { error } = await adminClient
+    .from('cc_checklist_responses')
+    .update({ day5_data: data })
+    .eq('student_id', Number(studentId))
+    .eq('session_round', sessionRound)
+
+  if (error) return { error: '저장 중 오류가 발생했습니다.' }
+  revalidatePath('/student')
+  return { success: true }
+}
+
 export async function skipTutorComment1(sessionRound: number) {
   const cookieStore = await cookies()
   const studentId = cookieStore.get('cc_student_id')?.value

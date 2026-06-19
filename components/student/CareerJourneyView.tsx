@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { JOB_LABELS_FLAT, type JobType } from '@/lib/survey-questions'
-import { saveDay23, saveDay5, rollbackStage, type RollbackTarget } from '@/app/actions/checklist'
+import { saveDay23, saveDay5, updateDay23Data, updateDay5Data, rollbackStage, type RollbackTarget } from '@/app/actions/checklist'
 import {
   type Day1Data, type Day23Data, type Day5Data,
   EMPTY_DAY23, EMPTY_DAY5,
@@ -38,7 +38,7 @@ type Props = {
   formConfig?: FormConfig
 }
 
-type EditMode = 'none' | 'checklist' | 'day1'
+type EditMode = 'none' | 'checklist' | 'day1' | 'day23' | 'day5'
 
 export default function CareerJourneyView({
   stage, studentName, sessionRound, topJob, topJobPct, jobPcts, answers,
@@ -189,6 +189,67 @@ export default function CareerJourneyView({
               </div>
             </div>
 
+            {/* DAY 2+3 카드 (stage 3 이상) */}
+            {currentStage >= 3 && (
+              <div className="bg-white rounded-2xl border border-slate-100 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm font-bold text-slate-800">🗺️ DAY 2+3 마케터 탐색 + 취업 방향</p>
+                  <button onClick={() => setEditMode('day23')}
+                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium underline underline-offset-2">
+                    수정하기
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  {([
+                    { key: 'target_job_1',       label: '🥇 1순위 직무',          val: day23Data.target_job_1 },
+                    { key: 'target_job_2',       label: '🥈 2순위 직무',          val: day23Data.target_job_2 },
+                    { key: 'strengths',          label: '💪 강점 초안',           val: day23Data.strengths },
+                    { key: 'marketer_sentence',  label: '✍️ 나는 어떤 마케터인가', val: day23Data.marketer_sentence },
+                    { key: 'compass_draft',      label: '🧭 취업 나침반 초안',     val: day23Data.compass_draft },
+                  ] as const).map(({ key, label, val }) => (
+                    <div key={key}>
+                      <p className="text-xs font-semibold text-slate-400 mb-1">{label}</p>
+                      {val?.trim() ? (
+                        <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{val}</p>
+                      ) : (
+                        <p className="text-sm text-slate-300 italic">작성하지 않았어요</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* DAY 5 카드 (stage 5 이상) */}
+            {currentStage >= 5 && (
+              <div className="bg-white rounded-2xl border border-slate-100 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm font-bold text-slate-800">🏁 DAY 5 나의 취업 나침반</p>
+                  <button onClick={() => setEditMode('day5')}
+                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium underline underline-offset-2">
+                    수정하기
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  {([
+                    { key: 'compass_who',    label: '🙋 나는 어떤 사람인가', val: day5Data.compass_who },
+                    { key: 'compass_where',  label: '🎯 나는 어디로 가는가', val: day5Data.compass_where },
+                    { key: 'compass_why',    label: '💬 나는 왜 이 방향인가', val: day5Data.compass_why },
+                    { key: 'future_efforts', label: '💭 앞으로의 노력',       val: day5Data.future_efforts },
+                  ] as const).map(({ key, label, val }) => (
+                    <div key={key}>
+                      <p className="text-xs font-semibold text-slate-400 mb-1">{label}</p>
+                      {val?.trim() ? (
+                        <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed break-words">{val}</p>
+                      ) : (
+                        <p className="text-sm text-slate-300 italic">작성하지 않았어요</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* DAY 1 카드 */}
             <div className="bg-white rounded-2xl border border-slate-100 p-5">
               <div className="flex items-center justify-between mb-4">
@@ -250,6 +311,34 @@ export default function CareerJourneyView({
             formConfig={formConfig}
             onComplete={() => { setEditMode('none'); router.refresh() }}
             onClose={() => setEditMode('none')}
+          />
+        )}
+
+        {/* DAY2+3 수정 오버레이 */}
+        {editMode === 'day23' && (
+          <Day23FormScreen
+            studentName={studentName}
+            sessionRound={sessionRound}
+            topJob={topJob}
+            initialData={day23Data}
+            tutorComment={tutorComment1}
+            formConfig={formConfig}
+            onComplete={() => { setEditMode('none'); router.refresh() }}
+            onSave={(d) => updateDay23Data(sessionRound, d)}
+            onRollbackRequest={() => setEditMode('none')}
+          />
+        )}
+
+        {/* DAY5 수정 오버레이 */}
+        {editMode === 'day5' && (
+          <Day5FormScreen
+            studentName={studentName}
+            sessionRound={sessionRound}
+            initialData={day5Data}
+            tutorComment={tutorComment2}
+            onComplete={() => { setEditMode('none'); router.refresh() }}
+            onSave={(d) => updateDay5Data(sessionRound, d)}
+            onRollbackRequest={() => setEditMode('none')}
           />
         )}
 
@@ -356,10 +445,18 @@ function OXButtons({ value, onChange }: { value: string; onChange: (v: string) =
     </div>
   )
 }
-function TdInput({ value, onChange }: { value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) {
+function TdInput({ value, onChange }: { value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void }) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [value])
   return (
-    <input value={value} onChange={onChange} placeholder="여기에 작성하세요"
-      className="w-full bg-transparent text-xs text-slate-700 placeholder:text-slate-300 focus:outline-none focus:bg-slate-50 rounded px-1 py-0.5 min-w-[80px]" />
+    <textarea ref={ref} value={value} onChange={onChange} placeholder="여기에 작성하세요" rows={1}
+      className="w-full bg-transparent text-xs text-slate-700 placeholder:text-slate-300 focus:outline-none focus:bg-slate-50 rounded px-1 py-0.5 block"
+      style={{ resize: 'none', overflow: 'hidden', minHeight: '1.5rem' }} />
   )
 }
 
@@ -390,7 +487,7 @@ function Area({ value, onChange, placeholder, rows = 4 }: {
   )
 }
 
-export function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutorComment, formConfig, onComplete, onRollbackRequest }: {
+export function Day23FormScreen({ studentName, sessionRound, topJob, initialData, tutorComment, formConfig, onComplete, onSave, onRollbackRequest }: {
   studentName: string
   sessionRound: number
   topJob: JobType | null
@@ -398,6 +495,7 @@ export function Day23FormScreen({ studentName, sessionRound, topJob, initialData
   tutorComment: string | null
   formConfig?: FormConfig
   onComplete: () => void
+  onSave?: (data: Day23Data) => Promise<{ error?: string } | null | undefined>
   onRollbackRequest?: () => void
 }) {
   const cfg = formConfig?.day23 ?? DEFAULT_FORM_CONFIG.day23
@@ -431,7 +529,7 @@ export function Day23FormScreen({ studentName, sessionRound, topJob, initialData
 
   const handleSave = () => {
     startTransition(async () => {
-      const result = await saveDay23(sessionRound, data)
+      const result = await (onSave ? onSave(data) : saveDay23(sessionRound, data))
       if (result?.error) setSaveMsg(result.error)
       else onComplete()
     })
@@ -760,12 +858,13 @@ const PRE_CHECKLIST_ITEMS = [
   '나의 취업 나침반 한 장이 완성됐다',
 ]
 
-function Day5FormScreen({ studentName, sessionRound, initialData, tutorComment, onComplete, onRollbackRequest }: {
+function Day5FormScreen({ studentName, sessionRound, initialData, tutorComment, onComplete, onSave, onRollbackRequest }: {
   studentName: string
   sessionRound: number
   initialData: Day5Data
   tutorComment: string | null
   onComplete: () => void
+  onSave?: (data: Day5Data) => Promise<{ error?: string } | null | undefined>
   onRollbackRequest?: () => void
 }) {
   const [data, setData] = useState<Day5Data>(initialData)
@@ -787,7 +886,7 @@ function Day5FormScreen({ studentName, sessionRound, initialData, tutorComment, 
 
   const handleSave = () => {
     startTransition(async () => {
-      const result = await saveDay5(sessionRound, data)
+      const result = await (onSave ? onSave(data) : saveDay5(sessionRound, data))
       if (result?.error) setSaveMsg(result.error)
       else onComplete()
     })

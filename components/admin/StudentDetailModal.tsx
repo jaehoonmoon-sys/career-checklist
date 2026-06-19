@@ -482,34 +482,57 @@ function JourneyView({ student }: { student: StudentRow }) {
       {/* 다음 단계 자기 체크 현황 */}
       <NextStepsAdminBlock day1Data={student.day1_data} />
 
-      {/* DAY 2+3 데이터 */}
-      {student.day23_data && Object.values(student.day23_data).some(v => v && String(v).trim()) && (
-        <DayDataBlock title="📅 DAY 2+3 | 마케터 탐색 + 취업 방향" fields={[
-          { key: 'curriculum',        label: '📚 커리큘럼 체크' },
-          { key: 'work_style',        label: '🎯 업무 스타일' },
-          { key: 'strengths',         label: '💪 강점 초안' },
-          { key: 'marketer_sentence', label: '✍️ 한 문장 완성' },
-          { key: 'target_job_1',      label: '🥇 1순위 직무' },
-          { key: 'target_job_2',      label: '🥈 2순위 직무' },
-          { key: 'industries',        label: '🏭 관심 산업' },
-          { key: 'industry_connection', label: '🔗 DAY1 경험 연결' },
-          { key: 'work_env_type',     label: '🏢 대행사 vs 인하우스' },
-          { key: 'work_env_size',     label: '🏢 회사 규모' },
-          { key: 'target_jd_url',     label: '📄 목표 JD 링크' },
-          { key: 'target_jd_note',    label: '📝 JD 메모' },
-          { key: 'compass_draft',     label: '🧭 취업 나침반 초안' },
-        ]} data={serializeDay23(student.day23_data as Record<string, unknown>)} />
-      )}
+      {/* DAY 2+3 데이터 (stage 2 이상) */}
+      {currentStage >= 2 && (() => {
+        const d23 = student.day23_data as Record<string, unknown> | null
+        const hasD23 = d23 && Object.values(d23).some(v =>
+          Array.isArray(v)
+            ? v.some(row => typeof row === 'object' && row !== null && Object.values(row).some(Boolean))
+            : typeof v === 'string' && v.trim() !== ''
+        )
+        return hasD23 ? (
+          <DayDataBlock title="📅 DAY 2+3 | 마케터 탐색 + 취업 방향" fields={[
+            { key: 'curriculum',          label: '📚 커리큘럼 체크' },
+            { key: 'work_style',          label: '🎯 업무 스타일' },
+            { key: 'strengths',           label: '💪 강점 초안' },
+            { key: 'marketer_sentence',   label: '✍️ 한 문장 완성' },
+            { key: 'target_job_1',        label: '🥇 1순위 직무' },
+            { key: 'target_job_2',        label: '🥈 2순위 직무' },
+            { key: 'industries',          label: '🏭 관심 산업' },
+            { key: 'industry_connection', label: '🔗 DAY1 경험 연결' },
+            { key: 'work_env_type',       label: '🏢 대행사 vs 인하우스' },
+            { key: 'work_env_size',       label: '🏢 회사 규모' },
+            { key: 'target_jd_url',       label: '📄 목표 JD 링크' },
+            { key: 'target_jd_note',      label: '📝 JD 메모' },
+            { key: 'compass_draft',       label: '🧭 취업 나침반 초안' },
+          ]} data={serializeDay23(d23)} />
+        ) : (
+          <div className="bg-white rounded-2xl border border-slate-100 p-4">
+            <p className="text-xs font-semibold text-slate-600 mb-2">📅 DAY 2+3 제출 내용</p>
+            <p className="text-sm text-slate-300">아직 제출하지 않았어요</p>
+          </div>
+        )
+      })()}
 
-      {/* DAY 5 데이터 */}
-      {student.day5_data && Object.values(student.day5_data).some(v => v && String(v).trim()) && (
-        <DayDataBlock title="📅 DAY 5 | 나의 취업 나침반 완성" fields={[
-          { key: 'compass_who', label: '🙋 나는 어떤 사람인가' },
-          { key: 'compass_where', label: '🎯 나는 어디로 가는가' },
-          { key: 'compass_why', label: '💬 나는 왜 이 방향인가' },
-          { key: 'future_efforts', label: '💭 앞으로의 노력' },
-        ]} data={student.day5_data as Record<string, string>} />
-      )}
+      {/* DAY 5 데이터 (stage 4 이상) */}
+      {currentStage >= 4 && (() => {
+        const d5 = student.day5_data as Record<string, string> | null
+        const textKeys = ['compass_who', 'compass_where', 'compass_why', 'future_efforts']
+        const hasD5 = d5 && textKeys.some(k => typeof d5[k] === 'string' && d5[k].trim())
+        return hasD5 ? (
+          <DayDataBlock title="📅 DAY 5 | 나의 취업 나침반 완성" fields={[
+            { key: 'compass_who',    label: '🙋 나는 어떤 사람인가' },
+            { key: 'compass_where',  label: '🎯 나는 어디로 가는가' },
+            { key: 'compass_why',    label: '💬 나는 왜 이 방향인가' },
+            { key: 'future_efforts', label: '💭 앞으로의 노력' },
+          ]} data={d5} />
+        ) : (
+          <div className="bg-white rounded-2xl border border-slate-100 p-4">
+            <p className="text-xs font-semibold text-slate-600 mb-2">📅 DAY 5 제출 내용</p>
+            <p className="text-sm text-slate-300">아직 제출하지 않았어요</p>
+          </div>
+        )
+      })()}
 
       {/* 레거시 경험 데이터 */}
       {student.experiences && !student.day1_data && (
