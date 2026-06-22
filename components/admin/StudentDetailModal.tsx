@@ -10,7 +10,7 @@ import {
   QUESTIONS, CATEGORIES, ANSWER_OPTIONS,
   JOB_LABELS, JOB_LABELS_FLAT, type JobType,
 } from '@/lib/survey-questions'
-import { saveTutorComment } from '@/app/actions/admin'
+import { saveTutorComment, deleteTutorComment } from '@/app/actions/admin'
 import type { StudentRow } from '@/app/actions/admin'
 import { NEXT_STEPS_ITEMS, type Day23Data, type Day5Data } from '@/lib/types'
 import { DEFAULT_FORM_CONFIG } from '@/lib/form-config'
@@ -351,6 +351,7 @@ function Day1AdminPanel({ student }: { student: StudentRow }) {
   const [comment1, setComment1] = useState(student.tutor_comment_1 ?? '')
   const [editing1, setEditing1] = useState(!student.tutor_comment_1)
   const [saveResult1, setSaveResult1] = useState<{ ok?: boolean; error?: string } | null>(null)
+  const [deleteConfirm1, setDeleteConfirm1] = useState(false)
   const currentStage = student.stage ?? 0
 
   const handleSave = () => {
@@ -359,6 +360,13 @@ function Day1AdminPanel({ student }: { student: StudentRow }) {
       const result = await saveTutorComment(student.id, 1, 1, comment1)
       if (result.success) { setSaveResult1({ ok: true }); setEditing1(false); setTimeout(() => router.refresh(), 800) }
       else setSaveResult1({ error: result.error })
+    })
+  }
+
+  const handleDelete = () => {
+    startTransition(async () => {
+      const result = await deleteTutorComment(student.id, 1, 1)
+      if (result.success) { setComment1(''); setEditing1(true); setDeleteConfirm1(false); router.refresh() }
     })
   }
 
@@ -372,7 +380,23 @@ function Day1AdminPanel({ student }: { student: StudentRow }) {
         <div className={`bg-white rounded-2xl border p-4 ${editing1 ? 'border-orange-100' : 'border-slate-100'}`}>
           <div className="flex items-center justify-between mb-1">
             <p className={`text-xs font-semibold ${editing1 ? 'text-orange-600' : 'text-slate-600'}`}>📝 1차 면담 메모</p>
-            {!editing1 && <button onClick={() => setEditing1(true)} className="text-xs text-slate-400 hover:text-slate-600 underline">수정</button>}
+            {!editing1 && (
+              <div className="flex items-center gap-2">
+                {deleteConfirm1 ? (
+                  <>
+                    <span className="text-xs text-red-500">정말 삭제할까요?</span>
+                    <button onClick={handleDelete} disabled={isPending}
+                      className="text-xs text-red-600 hover:text-red-700 font-semibold underline">삭제</button>
+                    <button onClick={() => setDeleteConfirm1(false)} className="text-xs text-slate-400 hover:text-slate-600">취소</button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => setEditing1(true)} className="text-xs text-slate-400 hover:text-slate-600 underline">수정</button>
+                    <button onClick={() => setDeleteConfirm1(true)} className="text-xs text-red-400 hover:text-red-600 underline">삭제</button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
           {editing1 ? (
             <>
@@ -441,6 +465,7 @@ function Day23AdminPanel({ student }: { student: StudentRow }) {
   const [comment2, setComment2] = useState(student.tutor_comment_2 ?? '')
   const [editing2, setEditing2] = useState(!student.tutor_comment_2)
   const [saveResult2, setSaveResult2] = useState<{ ok?: boolean; error?: string } | null>(null)
+  const [deleteConfirm2, setDeleteConfirm2] = useState(false)
   const currentStage = student.stage ?? 0
 
   const handleSave = () => {
@@ -452,7 +477,19 @@ function Day23AdminPanel({ student }: { student: StudentRow }) {
     })
   }
 
+  const handleDelete = () => {
+    startTransition(async () => {
+      const result = await deleteTutorComment(student.id, 1, 2)
+      if (result.success) { setComment2(''); setEditing2(true); setDeleteConfirm2(false); router.refresh() }
+    })
+  }
+
   const d23 = student.day23_data as Day23Data | null
+  const hasDay23Data = d23 && Object.values(d23).some(v =>
+    Array.isArray(v)
+      ? v.some(row => typeof row === 'object' && row !== null && Object.values(row).some(Boolean))
+      : typeof v === 'string' && v.trim() !== ''
+  )
 
   return (
     <div className="space-y-5">
@@ -461,7 +498,23 @@ function Day23AdminPanel({ student }: { student: StudentRow }) {
         <div className={`bg-white rounded-2xl border p-4 ${editing2 ? 'border-orange-100' : 'border-slate-100'}`}>
           <div className="flex items-center justify-between mb-1">
             <p className={`text-xs font-semibold ${editing2 ? 'text-orange-600' : 'text-slate-600'}`}>📝 2차 면담 메모</p>
-            {!editing2 && <button onClick={() => setEditing2(true)} className="text-xs text-slate-400 hover:text-slate-600 underline">수정</button>}
+            {!editing2 && (
+              <div className="flex items-center gap-2">
+                {deleteConfirm2 ? (
+                  <>
+                    <span className="text-xs text-red-500">정말 삭제할까요?</span>
+                    <button onClick={handleDelete} disabled={isPending}
+                      className="text-xs text-red-600 hover:text-red-700 font-semibold underline">삭제</button>
+                    <button onClick={() => setDeleteConfirm2(false)} className="text-xs text-slate-400 hover:text-slate-600">취소</button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => setEditing2(true)} className="text-xs text-slate-400 hover:text-slate-600 underline">수정</button>
+                    <button onClick={() => setDeleteConfirm2(true)} className="text-xs text-red-400 hover:text-red-600 underline">삭제</button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
           {editing2 ? (
             <>
@@ -491,27 +544,16 @@ function Day23AdminPanel({ student }: { student: StudentRow }) {
         </div>
       )}
 
-      {/* DAY 2+3 시각적 데이터 */}
-      {currentStage >= 2 ? (
-        d23 && Object.values(d23).some(v =>
-          Array.isArray(v)
-            ? v.some(row => typeof row === 'object' && row !== null && Object.values(row).some(Boolean))
-            : typeof v === 'string' && v.trim() !== ''
-        ) ? (
-          <div className="bg-white rounded-2xl border border-slate-100 p-4">
-            <p className="text-xs font-semibold text-slate-700 mb-4">📅 DAY 2+3 제출 내용</p>
-            <Day23ReviewContent day23Data={d23} formConfig={DEFAULT_FORM_CONFIG} />
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl border border-slate-100 p-4">
-            <p className="text-xs font-semibold text-slate-600 mb-2">📅 DAY 2+3 제출 내용</p>
-            <p className="text-sm text-slate-300">아직 제출하지 않았어요</p>
-          </div>
-        )
+      {/* DAY 2+3 데이터 (관리자는 항상 볼 수 있음) */}
+      {hasDay23Data ? (
+        <div className="bg-white rounded-2xl border border-slate-100 p-4">
+          <p className="text-xs font-semibold text-slate-700 mb-4">📅 DAY 2+3 제출 내용</p>
+          <Day23ReviewContent day23Data={d23!} formConfig={DEFAULT_FORM_CONFIG} />
+        </div>
       ) : (
-        <div className="text-center py-10 text-slate-400">
-          <p className="text-3xl mb-2">🗺️</p>
-          <p className="text-sm">DAY 2+3 단계가 아직 열리지 않았어요</p>
+        <div className="bg-white rounded-2xl border border-slate-100 p-4">
+          <p className="text-xs font-semibold text-slate-600 mb-2">📅 DAY 2+3 제출 내용</p>
+          <p className="text-sm text-slate-300">아직 제출하지 않았어요</p>
         </div>
       )}
     </div>

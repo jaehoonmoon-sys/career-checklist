@@ -65,8 +65,8 @@ export default function CareerJourneyView({
     )
   }
 
-  // ─── Stage 2: DAY 2+3 폼 + 탭 ──────────────────────────────
-  if (currentStage === 2) {
+  // ─── DAY 2+3 폼 + 탭 (전체 열기 플래그 ON, 미제출 상태) ──────
+  if (formConfig?.day23_globally_open && currentStage < 3) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col">
         <nav className="bg-white border-b border-slate-100 sticky top-0 z-10 shrink-0">
@@ -116,8 +116,8 @@ export default function CareerJourneyView({
     )
   }
 
-  // ─── Stage 4: DAY 5 폼 + 탭 ────────────────────────────────
-  if (currentStage === 4) {
+  // ─── DAY 5 폼 + 탭 (전체 열기 플래그 ON, 미제출 상태) ─────────
+  if (formConfig?.day5_globally_open && currentStage >= 3 && currentStage < 5) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col">
         <nav className="bg-white border-b border-slate-100 sticky top-0 z-10 shrink-0">
@@ -140,6 +140,7 @@ export default function CareerJourneyView({
           <Day5FormScreen
             studentName={studentName} sessionRound={sessionRound}
             initialData={day5Data} tutorComment={tutorComment2}
+            formConfig={formConfig}
             onComplete={() => router.refresh()} onRollbackRequest={() => setShowRollback(true)}
             suppressNav
           />
@@ -180,8 +181,8 @@ export default function CareerJourneyView({
     const reviewTabs = [
       { id: 'checklist' as const, label: '📊 체크리스트' },
       { id: 'day1' as const, label: '📝 DAY 1' },
-      ...(currentStage >= 3 ? [{ id: 'day23' as const, label: '🗺️ DAY 2+3' }] : []),
-      ...(currentStage >= 5 ? [{ id: 'day5' as const, label: '🏁 DAY 5' }] : []),
+      ...(currentStage >= 3 && formConfig?.day23_globally_open ? [{ id: 'day23' as const, label: '🗺️ DAY 2+3' }] : []),
+      ...(currentStage >= 5 && formConfig?.day5_globally_open ? [{ id: 'day5' as const, label: '🏁 DAY 5' }] : []),
     ]
 
     return (
@@ -1064,24 +1065,19 @@ DAY 2+3 경험 정리를 완성했어요. 목표 직무와 취업 방향을 구�
 // DAY 5 최종 정리 폼
 // ══════════════════════════════════════════════════════════════════
 
-const PRE_CHECKLIST_ITEMS = [
-  '목표 직무를 1순위로 결정했다',
-  '목표 JD를 1개 찾아 링크를 저장해뒀다',
-  '내 경험 목록이 정리되어 있다 (캠프 전·후 모두)',
-  '나의 강점 3가지를 경험 근거와 함께 쓸 수 있다',
-  '나의 취업 나침반 한 장이 완성됐다',
-]
 
-function Day5FormScreen({ studentName, sessionRound, initialData, tutorComment, onComplete, onSave, onRollbackRequest, suppressNav }: {
+export function Day5FormScreen({ studentName, sessionRound, initialData, tutorComment, formConfig, onComplete, onSave, onRollbackRequest, suppressNav }: {
   studentName: string
   sessionRound: number
   initialData: Day5Data
   tutorComment: string | null
+  formConfig?: FormConfig
   onComplete: () => void
   onSave?: (data: Day5Data) => Promise<{ error?: string } | null | undefined>
   onRollbackRequest?: () => void
   suppressNav?: boolean
 }) {
+  const cfg5 = formConfig?.day5 ?? DEFAULT_FORM_CONFIG.day5
   const [data, setData] = useState<Day5Data>(initialData)
   const [isPending, startTransition] = useTransition()
   const [saveMsg, setSaveMsg] = useState('')
@@ -1149,20 +1145,20 @@ function Day5FormScreen({ studentName, sessionRound, initialData, tutorComment, 
             </div>
             <div className="p-5 space-y-5">
               <div>
-                <Label>🙋 나는 어떤 사람인가</Label>
+                <Label>{cfg5.compass_who.label}</Label>
                 <Area value={data.compass_who} onChange={setField('compass_who')} rows={6}
-                  placeholder={`핵심 경험 3가지 (캠프 전·후 통틀어):\n\n나의 강점 3가지 (근거 포함):\n\n에너지가 올라가는 일:\n\n피하고 싶은 일 + 이유:`} />
+                  placeholder={cfg5.compass_who.placeholder ?? ''} />
               </div>
               <div>
-                <Label>🎯 나는 어디로 가는가</Label>
+                <Label>{cfg5.compass_where.label}</Label>
                 <Area value={data.compass_where} onChange={setField('compass_where')} rows={6}
-                  placeholder={`목표 직무 (1순위 / 2순위):\n\n대행사 vs 인하우스:\n\n선호 회사 규모:\n\n관심 산업:\n\n목표 JD 링크:`} />
+                  placeholder={cfg5.compass_where.placeholder ?? ''} />
               </div>
               <div>
-                <Label>💬 나는 왜 이 방향인가</Label>
-                <Hint>나는 (직무) 마케터로서 (환경)에서 일하고 싶다. 나의 (강점/경험)이 이 방향과 맞닿아 있기 때문이다.</Hint>
+                <Label>{cfg5.compass_why.label}</Label>
+                {cfg5.compass_why.hint && <Hint>{cfg5.compass_why.hint}</Hint>}
                 <Area value={data.compass_why} onChange={setField('compass_why')} rows={4}
-                  placeholder="나는 ___ 마케터로서 ___ 에서 일하고 싶다.&#10;나의 ___ 이 이 방향과 맞닿아 있기 때문이다." />
+                  placeholder={cfg5.compass_why.placeholder ?? ''} />
               </div>
             </div>
           </div>
@@ -1173,7 +1169,7 @@ function Day5FormScreen({ studentName, sessionRound, initialData, tutorComment, 
               <p className="text-sm font-semibold text-slate-800">파트 2 | 세션 전 체크리스트 <span className="text-xs font-normal text-slate-400">(20분)</span></p>
             </div>
             <div className="p-5 space-y-3">
-              {PRE_CHECKLIST_ITEMS.map(item => (
+              {cfg5.pre_checklist_items.map(item => (
                 <label key={item} className="flex items-start gap-3 cursor-pointer group">
                   <div onClick={() => toggleCheck(item)}
                     className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
@@ -1204,7 +1200,7 @@ function Day5FormScreen({ studentName, sessionRound, initialData, tutorComment, 
             </div>
             <div className="p-5">
               <Area value={data.future_efforts} onChange={setField('future_efforts')} rows={7}
-                placeholder="앞으로 해야 할 것들을 자유롭게 적어보세요..." />
+                placeholder={cfg5.future_efforts.placeholder ?? ''} />
             </div>
           </div>
 

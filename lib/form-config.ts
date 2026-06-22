@@ -38,6 +38,9 @@ export type FieldCfg = {
 // ── 전체 폼 설정 타입 ────────────────────────────────────────────
 
 export type FormConfig = {
+  // 전체 접근 제어 플래그 (디폴트: 잠금)
+  day23_globally_open: boolean
+  day5_globally_open: boolean
   day1: {
     intro_callout: string
     sections: SectionDef[]
@@ -69,6 +72,13 @@ export type FormConfig = {
     target_jd_url: FieldCfg
     target_jd_note: FieldCfg
     compass_draft: FieldCfg
+  }
+  day5: {
+    compass_who: FieldCfg
+    compass_where: FieldCfg
+    compass_why: FieldCfg
+    pre_checklist_items: string[]
+    future_efforts: FieldCfg
   }
 }
 
@@ -149,6 +159,8 @@ const DEFAULT_DAY1_SECTIONS: SectionDef[] = [
 ]
 
 export const DEFAULT_FORM_CONFIG: FormConfig = {
+  day23_globally_open: false,
+  day5_globally_open: false,
   day1: {
     intro_callout:
       '여기서부터가 진짜 취업 준비예요.\n\n방금 한 체크리스트는 가볍게 재미로 해보는 직무 탐색이었어요. 진짜 취업 준비는 나의 경험을 꺼내고 정리하는 것에서 시작합니다.\n\n"마케팅 경험이 없는데..."라고 생각할 수 있지만, 마케팅은 생활에 녹아있습니다. 올리브영 알바에서 고객에게 제품을 추천했다면 → 세일즈와 고객 이해입니다. 인스타에 올린 사진 한 장도, 친구에게 맛집 추천도 → 모두 커뮤니케이션입니다.\n\n일단 다 꺼내놓는 게 오늘의 목표입니다. 선별은 나중에 합니다.',
@@ -234,6 +246,32 @@ export const DEFAULT_FORM_CONFIG: FormConfig = {
       placeholder: '나는 (직무) 마케터로서\n(산업 / 회사 유형)에 지원하겠다.\n나의 강점은 (강점)이고,\n그 근거가 되는 경험은 (경험)이다.',
     },
   },
+  day5: {
+    compass_who: {
+      label: '🙋 나는 어떤 사람인가',
+      placeholder: '핵심 경험 3가지 (캠프 전·후 통틀어):\n\n나의 강점 3가지 (근거 포함):\n\n에너지가 올라가는 일:\n\n피하고 싶은 일 + 이유:',
+    },
+    compass_where: {
+      label: '🎯 나는 어디로 가는가',
+      placeholder: '목표 직무 (1순위 / 2순위):\n\n대행사 vs 인하우스:\n\n선호 회사 규모:\n\n관심 산업:\n\n목표 JD 링크:',
+    },
+    compass_why: {
+      label: '💬 나는 왜 이 방향인가',
+      hint: '나는 (직무) 마케터로서 (환경)에서 일하고 싶다. 나의 (강점/경험)이 이 방향과 맞닿아 있기 때문이다.',
+      placeholder: '나는 ___ 마케터로서 ___ 에서 일하고 싶다.\n나의 ___ 이 이 방향과 맞닿아 있기 때문이다.',
+    },
+    pre_checklist_items: [
+      '목표 직무를 1순위로 결정했다',
+      '목표 JD를 1개 찾아 링크를 저장해뒀다',
+      '내 경험 목록이 정리되어 있다 (캠프 전·후 모두)',
+      '나의 강점 3가지를 경험 근거와 함께 쓸 수 있다',
+      '나의 취업 나침반 한 장이 완성됐다',
+    ],
+    future_efforts: {
+      label: '앞으로 어떤 노력을 할 건가',
+      placeholder: '앞으로 해야 할 것들을 자유롭게 적어보세요...',
+    },
+  },
 }
 
 // ── 병합 헬퍼 ──────────────────────────────────────────────────────
@@ -242,6 +280,7 @@ export function getEffectiveConfig(saved: Record<string, unknown>): FormConfig {
   const base = DEFAULT_FORM_CONFIG
   const savedDay1  = (saved.day1  as Record<string, unknown> | undefined) ?? {}
   const savedDay23 = (saved.day23 as Record<string, unknown> | undefined) ?? {}
+  const savedDay5  = (saved.day5  as Record<string, unknown> | undefined) ?? {}
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const shallowMerge = (def: any, over: any): any => {
@@ -256,6 +295,8 @@ export function getEffectiveConfig(saved: Record<string, unknown>): FormConfig {
   }
 
   return {
+    day23_globally_open: (saved.day23_globally_open as boolean) ?? false,
+    day5_globally_open: (saved.day5_globally_open as boolean) ?? false,
     day1: {
       intro_callout: (savedDay1.intro_callout as string) ?? base.day1.intro_callout,
       sections: Array.isArray(savedDay1.sections)
@@ -263,6 +304,7 @@ export function getEffectiveConfig(saved: Record<string, unknown>): FormConfig {
         : base.day1.sections,
     },
     day23: shallowMerge(base.day23, savedDay23),
+    day5: shallowMerge(base.day5, savedDay5),
   }
 }
 

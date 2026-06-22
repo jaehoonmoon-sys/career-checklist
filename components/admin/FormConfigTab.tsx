@@ -6,9 +6,9 @@ import {
   type FormConfig, type SectionDef, type FieldDef, type FieldCfg,
   DEFAULT_FORM_CONFIG,
 } from '@/lib/form-config'
-import { EMPTY_DAY1, EMPTY_DAY23 } from '@/lib/types'
+import { EMPTY_DAY1, EMPTY_DAY23, EMPTY_DAY5 } from '@/lib/types'
 import { Day1FormScreen } from '@/components/student/PostSaveFlow'
-import { Day23FormScreen } from '@/components/student/CareerJourneyView'
+import { Day23FormScreen, Day5FormScreen } from '@/components/student/CareerJourneyView'
 
 // ── 인라인 편집기 ─────────────────────────────────────────────────
 
@@ -420,19 +420,19 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 export default function FormConfigTab({ initialConfig }: { initialConfig: FormConfig }) {
   const [config, setConfig] = useState<FormConfig>(initialConfig)
   const [dirty, setDirty] = useState(false)
-  const [activeDay, setActiveDay] = useState<'day1' | 'day23'>('day1')
+  const [activeDay, setActiveDay] = useState<'day1' | 'day23' | 'day5'>('day1')
   const [saveMsg, setSaveMsg] = useState('')
   const [isPending, startTransition] = useTransition()
-  const [showPreview, setShowPreview] = useState<'day1' | 'day23' | null>(null)
+  const [showPreview, setShowPreview] = useState<'day1' | 'day23' | 'day5' | null>(null)
 
   const markDirty = () => { setDirty(true); setSaveMsg('') }
 
-  const update = <T,>(section: 'day1' | 'day23', key: string, value: T) => {
+  const update = <T,>(section: 'day1' | 'day23' | 'day5', key: string, value: T) => {
     setConfig(prev => ({ ...prev, [section]: { ...prev[section], [key]: value } }))
     markDirty()
   }
 
-  const updateFieldCfg = (section: 'day1' | 'day23', key: string, updated: FieldCfg) =>
+  const updateFieldCfg = (section: 'day1' | 'day23' | 'day5', key: string, updated: FieldCfg) =>
     update(section, key, updated)
 
   // DAY1 섹션 조작
@@ -484,6 +484,7 @@ export default function FormConfigTab({ initialConfig }: { initialConfig: FormCo
 
   const d1 = config.day1
   const d23 = config.day23
+  const d5 = config.day5
 
   // 미리보기용 DAY23 빈 데이터 (config 기준)
   const emptyDay23ForPreview = {
@@ -499,12 +500,12 @@ export default function FormConfigTab({ initialConfig }: { initialConfig: FormCo
       {/* 서브 탭 + 미리보기 버튼 */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
-          {(['day1', 'day23'] as const).map(day => (
+          {(['day1', 'day23', 'day5'] as const).map(day => (
             <button key={day} onClick={() => setActiveDay(day)}
               className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 activeDay === day ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
               }`}>
-              {day === 'day1' ? 'DAY 1' : 'DAY 2+3'}
+              {day === 'day1' ? 'DAY 1' : day === 'day23' ? 'DAY 2+3' : 'DAY 5'}
             </button>
           ))}
         </div>
@@ -667,48 +668,92 @@ export default function FormConfigTab({ initialConfig }: { initialConfig: FormCo
         </div>
       )}
 
+      {/* ── DAY 5 탭 ────────────────────────────────────────── */}
+      {activeDay === 'day5' && (
+        <div className="space-y-4">
+          {/* 나침반 필드 */}
+          <SectionLabel>파트 1 | 나의 취업 나침반 완성</SectionLabel>
+
+          <FieldRow name={d5.compass_who.label} cfg={d5.compass_who} showKeys={['label', 'placeholder']}
+            onChange={v => updateFieldCfg('day5', 'compass_who', v)} />
+          <FieldRow name={d5.compass_where.label} cfg={d5.compass_where} showKeys={['label', 'placeholder']}
+            onChange={v => updateFieldCfg('day5', 'compass_where', v)} />
+          <FieldRow name={d5.compass_why.label} cfg={d5.compass_why} showKeys={['label', 'hint', 'placeholder']}
+            onChange={v => updateFieldCfg('day5', 'compass_why', v)} />
+
+          {/* 체크리스트 항목 */}
+          <SectionLabel>파트 2 | 세션 전 체크리스트 항목</SectionLabel>
+          <StringListEditor
+            title="체크리스트 항목"
+            items={d5.pre_checklist_items}
+            onChange={items => update('day5', 'pre_checklist_items', items)}
+          />
+
+          {/* 앞으로의 노력 */}
+          <SectionLabel>파트 3 | 앞으로의 노력</SectionLabel>
+          <FieldRow name={d5.future_efforts.label} cfg={d5.future_efforts} showKeys={['label', 'placeholder']}
+            onChange={v => updateFieldCfg('day5', 'future_efforts', v)} />
+        </div>
+      )}
+
+      <SaveBanner dirty={dirty} onSave={handleSave} onReset={handleReset} isPending={isPending} />
+
       <SaveBanner dirty={dirty} onSave={handleSave} onReset={handleReset} isPending={isPending} />
 
       {/* ── 미리보기 오버레이 ─────────────────────────────── */}
       {showPreview && (
-        <div className="fixed top-0 left-0 right-0 z-[60] bg-slate-900/95 backdrop-blur text-white px-4 py-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <span className="text-[10px] bg-amber-500 text-white font-bold px-2 py-0.5 rounded-full">미리보기</span>
-            <span className="text-sm font-semibold">
-              {showPreview === 'day1' ? 'DAY 1 수강생 폼 미리보기' : 'DAY 2+3 수강생 폼 미리보기'}
-            </span>
-            <span className="text-xs text-slate-400">— 저장되지 않습니다</span>
+        <div className="fixed inset-0 z-[50] flex flex-col">
+          <div className="bg-slate-900/95 backdrop-blur text-white px-4 py-2.5 flex items-center justify-between shrink-0 z-[60] relative">
+            <div className="flex items-center gap-2.5">
+              <span className="text-[10px] bg-amber-500 text-white font-bold px-2 py-0.5 rounded-full">미리보기</span>
+              <span className="text-sm font-semibold">
+                {showPreview === 'day1' ? 'DAY 1 수강생 폼 미리보기'
+                  : showPreview === 'day23' ? 'DAY 2+3 수강생 폼 미리보기'
+                  : 'DAY 5 수강생 폼 미리보기'}
+              </span>
+              <span className="text-xs text-slate-400">— 저장되지 않습니다</span>
+            </div>
+            <button
+              onClick={() => setShowPreview(null)}
+              className="text-xs text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              ✕ 미리보기 닫기
+            </button>
           </div>
-          <button
-            onClick={() => setShowPreview(null)}
-            className="text-xs text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg transition-colors"
-          >
-            ✕ 미리보기 닫기
-          </button>
+          <div className="flex-1 overflow-y-auto bg-slate-50">
+            {showPreview === 'day1' && (
+              <Day1FormScreen
+                topJob="content"
+                sessionRound={0}
+                initialDay1={EMPTY_DAY1}
+                formConfig={config}
+                onComplete={() => setShowPreview(null)}
+                onClose={() => setShowPreview(null)}
+              />
+            )}
+            {showPreview === 'day23' && (
+              <Day23FormScreen
+                studentName="미리보기"
+                sessionRound={0}
+                topJob={null}
+                initialData={emptyDay23ForPreview}
+                tutorComment={null}
+                formConfig={config}
+                onComplete={() => setShowPreview(null)}
+              />
+            )}
+            {showPreview === 'day5' && (
+              <Day5FormScreen
+                studentName="미리보기"
+                sessionRound={0}
+                initialData={EMPTY_DAY5}
+                tutorComment={null}
+                formConfig={config}
+                onComplete={() => setShowPreview(null)}
+              />
+            )}
+          </div>
         </div>
-      )}
-
-      {showPreview === 'day1' && (
-        <Day1FormScreen
-          topJob="content"
-          sessionRound={0}
-          initialDay1={EMPTY_DAY1}
-          formConfig={config}
-          onComplete={() => setShowPreview(null)}
-          onClose={() => setShowPreview(null)}
-        />
-      )}
-
-      {showPreview === 'day23' && (
-        <Day23FormScreen
-          studentName="미리보기"
-          sessionRound={0}
-          topJob={null}
-          initialData={emptyDay23ForPreview}
-          tutorComment={null}
-          formConfig={config}
-          onComplete={() => setShowPreview(null)}
-        />
       )}
     </div>
   )

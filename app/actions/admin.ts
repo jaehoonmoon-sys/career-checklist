@@ -249,6 +249,53 @@ export async function closeDayAccess(
   return { success: true }
 }
 
+export async function setDayGlobalAccess(
+  day: '23' | '5',
+  open: boolean,
+): Promise<{ success?: boolean; error?: string }> {
+  const adminClient = createAdminClient()
+
+  const { data: existing } = await adminClient
+    .from('cc_form_config')
+    .select('config')
+    .eq('id', 1)
+    .single()
+
+  const currentConfig = (existing?.config as Record<string, unknown>) ?? {}
+  const field = day === '23' ? 'day23_globally_open' : 'day5_globally_open'
+  const updatedConfig = { ...currentConfig, [field]: open }
+
+  const { error } = await adminClient
+    .from('cc_form_config')
+    .upsert({ id: 1, config: updatedConfig, updated_at: new Date().toISOString() }, { onConflict: 'id' })
+
+  if (error) return { error: '저장 중 오류가 발생했습니다.' }
+
+  revalidatePath('/admin')
+  revalidatePath('/student')
+  return { success: true }
+}
+
+export async function deleteTutorComment(
+  studentId: number,
+  sessionRound: number,
+  commentNum: 1 | 2,
+): Promise<{ success: boolean; error?: string }> {
+  const adminClient = createAdminClient()
+
+  const field = commentNum === 1 ? 'tutor_comment_1' : 'tutor_comment_2'
+  const { error } = await adminClient
+    .from('cc_checklist_responses')
+    .update({ [field]: null })
+    .eq('student_id', studentId)
+    .eq('session_round', sessionRound)
+
+  if (error) return { success: false, error: '삭제 중 오류가 발생했습니다.' }
+
+  revalidatePath('/admin')
+  return { success: true }
+}
+
 export async function openDayAccessGlobal(
   day: '23' | '5',
 ): Promise<{ success: boolean; count?: number; error?: string }> {
