@@ -85,13 +85,22 @@ export default function CareerJourneyView({
           </div>
         </nav>
 
-        <div className={formTab === 'form' ? 'flex-1 flex flex-col min-h-0' : 'hidden'}>
-          <Day23FormScreen
-            studentName={studentName} sessionRound={sessionRound} topJob={topJob}
-            initialData={day23Data} tutorComment={tutorComment1} formConfig={formConfig}
-            onComplete={() => router.refresh()} onRollbackRequest={() => setShowRollback(true)}
-            suppressNav
-          />
+        <div className={formTab === 'form' ? 'flex-1 flex min-h-0' : 'hidden'}>
+          <div className="flex-1 min-w-0 flex flex-col min-h-0">
+            <Day23FormScreen
+              studentName={studentName} sessionRound={sessionRound} topJob={topJob}
+              initialData={day23Data} tutorComment={tutorComment1} formConfig={formConfig}
+              onComplete={() => router.refresh()} onRollbackRequest={() => setShowRollback(true)}
+              suppressNav
+            />
+          </div>
+          <aside className="hidden lg:flex flex-col w-64 shrink-0 p-4 overflow-y-auto border-l border-slate-100 bg-white">
+            <p className="text-sm font-bold text-slate-800 mb-1">✅ 다음 단계 진행 현황</p>
+            <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+              경험 정리가 끝났으면 아래 항목들을 틈틈이 해보세요. 완료하면 체크!
+            </p>
+            <NextStepsChecklist initialNextSteps={day1Data.next_steps ?? {}} sessionRound={sessionRound} />
+          </aside>
         </div>
         {formTab === 'checklist' && (
           <div className="flex-1 overflow-y-auto">
@@ -136,14 +145,23 @@ export default function CareerJourneyView({
           </div>
         </nav>
 
-        <div className={formTab === 'form' ? 'flex-1 flex flex-col min-h-0' : 'hidden'}>
-          <Day5FormScreen
-            studentName={studentName} sessionRound={sessionRound}
-            initialData={day5Data} tutorComment={tutorComment2}
-            formConfig={formConfig}
-            onComplete={() => router.refresh()} onRollbackRequest={() => setShowRollback(true)}
-            suppressNav
-          />
+        <div className={formTab === 'form' ? 'flex-1 flex min-h-0' : 'hidden'}>
+          <div className="flex-1 min-w-0 flex flex-col min-h-0">
+            <Day5FormScreen
+              studentName={studentName} sessionRound={sessionRound}
+              initialData={day5Data} tutorComment={tutorComment2}
+              formConfig={formConfig}
+              onComplete={() => router.refresh()} onRollbackRequest={() => setShowRollback(true)}
+              suppressNav
+            />
+          </div>
+          <aside className="hidden lg:flex flex-col w-64 shrink-0 p-4 overflow-y-auto border-l border-slate-100 bg-white">
+            <p className="text-sm font-bold text-slate-800 mb-1">✅ 다음 단계 진행 현황</p>
+            <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+              경험 정리가 끝났으면 아래 항목들을 틈틈이 해보세요. 완료하면 체크!
+            </p>
+            <NextStepsChecklist initialNextSteps={day1Data.next_steps ?? {}} sessionRound={sessionRound} />
+          </aside>
         </div>
         {formTab === 'checklist' && (
           <div className="flex-1 overflow-y-auto">

@@ -173,65 +173,77 @@ export function Day1FormScreen({ topJob, sessionRound, initialDay1, formConfig, 
         </button>
       </div>
 
-      {/* 폼 내용 */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-4 py-6 space-y-8">
+      {/* 폼 내용 + 사이드바 */}
+      <div className="flex-1 flex min-h-0">
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-2xl mx-auto px-4 py-6 space-y-8">
 
-          {/* 시작 전 읽기 */}
-          <D1Callout color="blue" icon="💡">
-            <p className="font-semibold mb-1.5">여기서부터가 진짜 취업 준비예요 <span className="font-normal text-xs">— 시작 전 읽기 (5분)</span></p>
-            {topJob && (
-              <p className="leading-relaxed mb-1">
-                결과로 <strong>{JOB_LABELS_FLAT[topJob]}</strong>가 나왔지만, 이건 단순 참고예요.
-              </p>
-            )}
-            <p className="leading-relaxed whitespace-pre-line">{cfg.intro_callout}</p>
-          </D1Callout>
+            {/* 시작 전 읽기 */}
+            <D1Callout color="blue" icon="💡">
+              <p className="font-semibold mb-1.5">여기서부터가 진짜 취업 준비예요 <span className="font-normal text-xs">— 시작 전 읽기 (5분)</span></p>
+              {topJob && (
+                <p className="leading-relaxed mb-1">
+                  결과로 <strong>{JOB_LABELS_FLAT[topJob]}</strong>가 나왔지만, 이건 단순 참고예요.
+                </p>
+              )}
+              <p className="leading-relaxed whitespace-pre-line">{cfg.intro_callout}</p>
+            </D1Callout>
 
-          {/* 섹션 반복 */}
-          {cfg.sections.map(section => (
-            <Fragment key={section.id}>
-              <D1SectionHeader title={section.title} time={section.time} />
+            {/* 섹션 반복 */}
+            {cfg.sections.map(section => (
+              <Fragment key={section.id}>
+                <D1SectionHeader title={section.title} time={section.time} />
 
-              {section.fields.map(field => {
-                if (field.type === 'subtitle') {
+                {section.fields.map(field => {
+                  if (field.type === 'subtitle') {
+                    return (
+                      <p key={field.id} className="text-xs font-semibold text-slate-500 -mt-4">
+                        {field.label}
+                      </p>
+                    )
+                  }
+
+                  const isFixed = FIXED_DAY1_IDS.has(field.id)
+                  const val = isFixed
+                    ? ((data[field.id as keyof Day1Data] as string) ?? '')
+                    : (data.extra_fields?.[field.id] ?? '')
+                  const handleChange = isFixed ? setFixed(field.id) : setExtra(field.id)
+
                   return (
-                    <p key={field.id} className="text-xs font-semibold text-slate-500 -mt-4">
-                      {field.label}
-                    </p>
+                    <D1Field key={field.id} label={field.label} desc={field.desc} example={field.example}>
+                      {field.callout && (
+                        <D1Callout color="yellow" icon="💬">
+                          <span className="whitespace-pre-line">{field.callout}</span>
+                        </D1Callout>
+                      )}
+                      {field.type === 'input' ? (
+                        <input
+                          value={val}
+                          onChange={handleChange}
+                          placeholder={field.placeholder ?? '여기에 작성하세요'}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:bg-white transition-colors"
+                        />
+                      ) : (
+                        <D1Textarea value={val} onChange={handleChange} placeholder={field.placeholder} />
+                      )}
+                    </D1Field>
                   )
-                }
+                })}
+              </Fragment>
+            ))}
 
-                const isFixed = FIXED_DAY1_IDS.has(field.id)
-                const val = isFixed
-                  ? ((data[field.id as keyof Day1Data] as string) ?? '')
-                  : (data.extra_fields?.[field.id] ?? '')
-                const handleChange = isFixed ? setFixed(field.id) : setExtra(field.id)
-
-                return (
-                  <D1Field key={field.id} label={field.label} desc={field.desc} example={field.example}>
-                    {field.callout && (
-                      <D1Callout color="yellow" icon="💬">
-                        <span className="whitespace-pre-line">{field.callout}</span>
-                      </D1Callout>
-                    )}
-                    {field.type === 'input' ? (
-                      <input
-                        value={val}
-                        onChange={handleChange}
-                        placeholder={field.placeholder ?? '여기에 작성하세요'}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:bg-white transition-colors"
-                      />
-                    ) : (
-                      <D1Textarea value={val} onChange={handleChange} placeholder={field.placeholder} />
-                    )}
-                  </D1Field>
-                )
-              })}
-            </Fragment>
-          ))}
-
+          </div>
         </div>
+
+        <aside className="hidden lg:flex flex-col w-64 shrink-0 p-4 overflow-y-auto border-l border-slate-100 bg-slate-50">
+          <div className="bg-white rounded-2xl border border-slate-100 p-4">
+            <p className="text-sm font-bold text-slate-800 mb-1">✅ 다음 단계 진행 현황</p>
+            <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+              경험 정리가 끝났으면 아래 항목들을 틈틈이 해보세요. 완료하면 체크!
+            </p>
+            <NextStepsChecklist initialNextSteps={data.next_steps ?? {}} sessionRound={sessionRound} />
+          </div>
+        </aside>
       </div>
 
       {/* 하단 저장 버튼 */}
