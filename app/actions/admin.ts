@@ -37,7 +37,7 @@ export async function getAdminOverview(): Promise<StudentRow[]> {
 
   const [{ data: students }, { data: responses }] = await Promise.all([
     adminClient
-      .from('mj_students')
+      .from('dm5_students')
       .select('id, student_name, cohort')
       .eq('is_active', true)
       .order('student_name'),

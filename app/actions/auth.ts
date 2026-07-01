@@ -61,7 +61,7 @@ export async function loginAsAdmin(password: string) {
 // 수강생 목록 조회 (기수별)
 export async function getStudentsByCohort(cohort: string) {
   const { data, error } = await supabase
-    .from('mj_students')
+    .from('dm5_students')
     .select('id, student_name')
     .eq('cohort', cohort)
     .eq('is_active', true)
@@ -74,7 +74,7 @@ export async function getStudentsByCohort(cohort: string) {
 // 기수 목록 조회
 export async function getCohorts() {
   const { data, error } = await supabase
-    .from('mj_students')
+    .from('dm5_students')
     .select('cohort')
     .eq('is_active', true)
     .not('cohort', 'is', null)
