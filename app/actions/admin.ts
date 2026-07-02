@@ -91,7 +91,9 @@ export async function getAdminOverview(): Promise<StudentRow[]> {
       ...acc,
       [job]: Math.max(0, Math.round((scores[job] / MAX_SCORES[job]) * 100)),
     }), {} as Record<JobType, number>)
-    const top_job = JOB_KEYS.reduce((a, b) => scores[a] >= scores[b] ? a : b)
+    const top_job = JOB_KEYS.reduce((a, b) =>
+      Math.max(0, scores[a] / MAX_SCORES[a]) >= Math.max(0, scores[b] / MAX_SCORES[b]) ? a : b
+    )
 
     return {
       id: s.id,

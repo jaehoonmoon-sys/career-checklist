@@ -47,12 +47,14 @@ export default async function StudentPage() {
     const day5Data: Day5Data = { ...EMPTY_DAY5, ...(resp?.day5_data ?? {}) }
 
     const scores = calcJobScores(initialAnswers)
-    const topJob = JOB_KEYS.reduce((a, b) => scores[a] >= scores[b] ? a : b)
-    const topJobPct = Math.max(0, Math.round((scores[topJob] / MAX_SCORES[topJob]) * 100))
     const jobPcts = JOB_KEYS.reduce((acc, job) => ({
       ...acc,
       [job]: Math.max(0, Math.round((scores[job] / MAX_SCORES[job]) * 100)),
     }), {} as Record<JobType, number>)
+    const topJob = JOB_KEYS.reduce((a, b) =>
+      Math.max(0, scores[a] / MAX_SCORES[a]) >= Math.max(0, scores[b] / MAX_SCORES[b]) ? a : b
+    )
+    const topJobPct = jobPcts[topJob]
 
     return (
       <CareerJourneyView

@@ -117,8 +117,10 @@ export default function CompetencyChecklist({ initialAnswers, initialDay1, sessi
   [jobPercents])
 
   const topJob = useMemo(() =>
-    JOB_ORDER.reduce((a, b) => jobPercents[a] >= jobPercents[b] ? a : b),
-  [jobPercents])
+    JOB_ORDER.reduce((a, b) =>
+      Math.max(0, jobScores[a] / MAX_SCORES[a]) >= Math.max(0, jobScores[b] / MAX_SCORES[b]) ? a : b
+    ),
+  [jobScores])
 
   const chartColor = positiveCount > 0 ? JOB_COLORS[topJob] : '#94a3b8'
 
