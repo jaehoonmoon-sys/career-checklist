@@ -53,6 +53,12 @@ type Props = {
 export default function StudentDetailModal({ student, onClose }: Props) {
   const { answers, top_job, job_pcts, student_name, answered_count, cohort, stage } = student
   const chartColor = top_job ? JOB_COLORS[top_job] : '#94a3b8'
+
+  const preIdx = answers['_pre']
+  const preSelectedJob: JobType | null =
+    typeof preIdx === 'number' && preIdx >= 0 && preIdx < JOB_ORDER.length
+      ? JOB_ORDER[preIdx]
+      : null
   const [tab, setTab] = useState<'checklist' | 'day1' | 'day23' | 'day5'>('checklist')
   const [isFullscreen, setIsFullscreen] = useState(false)
 
@@ -97,6 +103,19 @@ export default function StudentDetailModal({ student, onClose }: Props) {
             <p className="text-xs mt-0.5 font-medium" style={{ color: chartColor }}>
               적합도 {job_pcts[top_job]}%
             </p>
+          </div>
+        )}
+        {preSelectedJob && (
+          <div className="mt-2 rounded-xl px-3 py-2 bg-slate-50 flex items-center gap-2">
+            <p className="text-[11px] text-slate-400 shrink-0">💡 직감으로 선택</p>
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full text-white"
+              style={{ backgroundColor: JOB_COLORS[preSelectedJob] }}>
+              {JOB_LABELS_FLAT[preSelectedJob]}
+            </span>
+            {preSelectedJob === top_job
+              ? <span className="text-[10px] text-emerald-600 font-medium ml-auto">결과 일치 ✓</span>
+              : <span className="text-[10px] text-slate-400 ml-auto">결과와 다름</span>
+            }
           </div>
         )}
       </div>

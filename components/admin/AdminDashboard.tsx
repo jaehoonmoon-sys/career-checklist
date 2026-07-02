@@ -385,8 +385,14 @@ function StudentCard({ student, onClick }: {
   student: StudentRow
   onClick?: () => void
 }) {
-  const { student_name, completed, top_job, job_pcts, answered_count, cohort, stage } = student
+  const { student_name, completed, top_job, job_pcts, answered_count, cohort, stage, answers } = student
   const stageBadge = (stage ?? 0) > 0 ? STAGE_BADGE[stage ?? 0] : null
+
+  const preIdx = answers['_pre']
+  const preSelectedJob: JobType | null =
+    typeof preIdx === 'number' && preIdx >= 0 && preIdx < JOB_ORDER.length
+      ? JOB_ORDER[preIdx]
+      : null
 
   return (
     <div
@@ -412,11 +418,27 @@ function StudentCard({ student, onClick }: {
       {completed && top_job ? (
         <>
           <span
-            className="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full text-white mb-3"
+            className="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full text-white mb-1"
             style={{ backgroundColor: JOB_COLORS[top_job] }}
           >
             {JOB_EMOJIS[top_job]} {JOB_LABELS_FLAT[top_job]}
           </span>
+
+          {preSelectedJob ? (
+            <div className="flex items-center gap-1 mb-2">
+              <span className="text-[10px] text-slate-400">💡</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white"
+                style={{ backgroundColor: JOB_COLORS[preSelectedJob] }}>
+                {SHORT_LABELS[preSelectedJob]}
+              </span>
+              {preSelectedJob === top_job
+                ? <span className="text-[9px] text-emerald-500 font-medium">일치</span>
+                : <span className="text-[9px] text-amber-500 font-medium">다름</span>
+              }
+            </div>
+          ) : (
+            <div className="mb-2" />
+          )}
 
           {/* 상위 3개 직무 미니 바 */}
           <div className="space-y-1.5">
