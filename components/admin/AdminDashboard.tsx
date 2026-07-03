@@ -28,6 +28,13 @@ const SHORT_LABELS: Record<JobType, string> = {
   growth: '그로스', crm: 'CRM', ae: 'AE',
 }
 
+function getPreJob(student: StudentRow): JobType | null {
+  const preIdx = student.answers['_pre']
+  return typeof preIdx === 'number' && preIdx >= 0 && preIdx < JOB_ORDER.length
+    ? JOB_ORDER[preIdx]
+    : null
+}
+
 export default function AdminDashboard({
   students,
   formConfig,
@@ -36,6 +43,7 @@ export default function AdminDashboard({
   formConfig: FormConfig
 }) {
   const [mainTab, setMainTab] = useState<'students' | 'form'>('students')
+  const [classifyTab, setClassifyTab] = useState<'checklist' | 'pre'>('checklist')
   const [filter, setFilter] = useState<FilterType>('all')
   const [selectedStudent, setSelectedStudent] = useState<StudentRow | null>(null)
   const [search, setSearch] = useState('')
@@ -43,6 +51,7 @@ export default function AdminDashboard({
   const completed = useMemo(() => students.filter(s => s.completed), [students])
   const incomplete = useMemo(() => students.filter(s => !s.completed), [students])
 
+  // 체크리스트 기준 직무별 카운트 (완료 수강생)
   const jobCounts = useMemo(() =>
     JOB_ORDER.reduce((acc, job) => ({
       ...acc,
@@ -50,11 +59,34 @@ export default function AdminDashboard({
     }), {} as Record<JobType, number>),
   [completed])
 
+  // 수강생 선택 기준 직무별 카운트 (완료 수강생, 분포 표시용)
+  const preJobCounts = useMemo(() =>
+    JOB_ORDER.reduce((acc, job) => ({
+      ...acc,
+      [job]: completed.filter(s => getPreJob(s) === job).length,
+    }), {} as Record<JobType, number>),
+  [completed])
+
+  // 수강생 선택 기준 직무별 카운트 (전체 수강생, 필터 칩 표시용)
+  const preJobFilterCounts = useMemo(() =>
+    JOB_ORDER.reduce((acc, job) => ({
+      ...acc,
+      [job]: students.filter(s => getPreJob(s) === job).length,
+    }), {} as Record<JobType, number>),
+  [students])
+
   const filtered = useMemo(() => {
     let base: StudentRow[]
-    if (filter === 'all') base = students
-    else if (filter === 'incomplete') base = incomplete
-    else base = completed.filter(s => s.top_job === filter)
+
+    if (classifyTab === 'checklist') {
+      if (filter === 'all') base = students
+      else if (filter === 'incomplete') base = incomplete
+      else base = completed.filter(s => s.top_job === filter)
+    } else {
+      if (filter === 'all') base = students
+      else if (filter === 'incomplete') base = incomplete
+      else base = students.filter(s => getPreJob(s) === filter)
+    }
 
     if (search.trim()) {
       base = base.filter(s => s.student_name.includes(search.trim()))
@@ -72,9 +104,13 @@ export default function AdminDashboard({
       return [...base].sort((a, b) => a.student_name.localeCompare(b.student_name))
     }
 
-    // 직무 필터: 해당 직무 % 높은 순
-    return [...base].sort((a, b) => (b.job_pcts[filter] ?? 0) - (a.job_pcts[filter] ?? 0))
-  }, [filter, students, completed, incomplete, search])
+    if (classifyTab === 'checklist') {
+      // 직무 필터: 해당 직무 % 높은 순
+      return [...base].sort((a, b) => (b.job_pcts[filter] ?? 0) - (a.job_pcts[filter] ?? 0))
+    } else {
+      return [...base].sort((a, b) => a.student_name.localeCompare(b.student_name))
+    }
+  }, [filter, classifyTab, students, completed, incomplete, search])
 
   const completionPct = students.length > 0
     ? Math.round((completed.length / students.length) * 100)
@@ -99,6 +135,11 @@ export default function AdminDashboard({
         router.refresh()
       }
     })
+  }
+
+  const handleClassifyTabChange = (tab: 'checklist' | 'pre') => {
+    setClassifyTab(tab)
+    setFilter('all')
   }
 
   return (
@@ -259,12 +300,36 @@ export default function AdminDashboard({
           </div>
         </div>
 
-        {/* 직무별 분포 미니 바 */}
+        {/* 직무 분류 기준 탭 + 분포 */}
         <div className="bg-white rounded-2xl border border-slate-100 p-4">
-          <p className="text-xs font-semibold text-slate-600 mb-3">완료 수강생 직무 분포</p>
+          {/* 탭 전환 */}
+          <div className="flex gap-1 mb-4 border-b border-slate-100 pb-3">
+            {([
+              { key: 'checklist', label: '체크리스트 선택' },
+              { key: 'pre',       label: '수강생 선택' },
+            ] as const).map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => handleClassifyTabChange(tab.key)}
+                className={`text-xs font-semibold px-3.5 py-1.5 rounded-lg transition-colors ${
+                  classifyTab === tab.key
+                    ? 'bg-indigo-50 text-indigo-700'
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                }`}>
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <p className="text-xs font-semibold text-slate-600 mb-3">
+            {classifyTab === 'checklist'
+              ? '완료 수강생 직무 분포 (체크리스트 기준)'
+              : '완료 수강생 직무 분포 (수강생 직감 선택 기준)'}
+          </p>
+
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {JOB_ORDER.map(job => {
-              const count = jobCounts[job]
+              const count = classifyTab === 'checklist' ? jobCounts[job] : preJobCounts[job]
               const pct = completed.length > 0 ? Math.round(count / completed.length * 100) : 0
               return (
                 <div key={job} className="text-center">
@@ -276,6 +341,12 @@ export default function AdminDashboard({
               )
             })}
           </div>
+
+          {classifyTab === 'pre' && (
+            <p className="text-[10px] text-slate-400 mt-3">
+              💡 수강생이 체크리스트 전 직감으로 선택한 직무 기준입니다. 선택하지 않은 수강생은 집계에서 제외됩니다.
+            </p>
+          )}
         </div>
 
         {/* 검색 */}
@@ -304,15 +375,18 @@ export default function AdminDashboard({
             onClick={() => setFilter('all')}
             color="#64748b"
           />
-          {JOB_ORDER.map(job => (
-            <FilterChip
-              key={job}
-              label={`${JOB_EMOJIS[job]} ${SHORT_LABELS[job]} ${jobCounts[job]}`}
-              active={filter === job}
-              onClick={() => setFilter(job)}
-              color={JOB_COLORS[job]}
-            />
-          ))}
+          {JOB_ORDER.map(job => {
+            const count = classifyTab === 'checklist' ? jobCounts[job] : preJobFilterCounts[job]
+            return (
+              <FilterChip
+                key={job}
+                label={`${JOB_EMOJIS[job]} ${SHORT_LABELS[job]} ${count}`}
+                active={filter === job}
+                onClick={() => setFilter(job)}
+                color={JOB_COLORS[job]}
+              />
+            )
+          })}
           <FilterChip
             label={`미완료 ${incomplete.length}`}
             active={filter === 'incomplete'}
@@ -385,14 +459,9 @@ function StudentCard({ student, onClick }: {
   student: StudentRow
   onClick?: () => void
 }) {
-  const { student_name, completed, top_job, job_pcts, answered_count, cohort, stage, answers } = student
+  const { student_name, completed, top_job, job_pcts, answered_count, cohort, stage } = student
   const stageBadge = (stage ?? 0) > 0 ? STAGE_BADGE[stage ?? 0] : null
-
-  const preIdx = answers['_pre']
-  const preSelectedJob: JobType | null =
-    typeof preIdx === 'number' && preIdx >= 0 && preIdx < JOB_ORDER.length
-      ? JOB_ORDER[preIdx]
-      : null
+  const preSelectedJob = getPreJob(student)
 
   return (
     <div
