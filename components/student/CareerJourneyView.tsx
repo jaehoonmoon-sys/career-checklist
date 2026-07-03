@@ -65,6 +65,26 @@ export default function CareerJourneyView({
     )
   }
 
+  // ─── Day1 수정 모드: 폼 화면 단계에서도 접근 가능 ───────────────
+  if (currentStage >= 1 && editMode === 'day1') {
+    return (
+      <Day1FormScreen topJob={topJob} sessionRound={sessionRound} initialDay1={day1Data}
+        formConfig={formConfig} onComplete={() => { setEditMode('none'); router.refresh() }}
+        onClose={() => setEditMode('none')} />
+    )
+  }
+
+  // ─── Day23 수정 모드: Day5 폼 화면에서도 접근 가능 ──────────────
+  if (currentStage >= 3 && editMode === 'day23') {
+    return (
+      <Day23FormScreen studentName={studentName} sessionRound={sessionRound} topJob={topJob}
+        initialData={day23Data} tutorComment={tutorComment1} formConfig={formConfig}
+        onComplete={() => { setEditMode('none'); router.refresh() }}
+        onSave={(d) => updateDay23Data(sessionRound, d)}
+        onRollbackRequest={() => setEditMode('none')} />
+    )
+  }
+
   // ─── DAY 2+3 폼 + 탭 (전체 열기 플래그 ON, 미제출 상태) ──────
   if (formConfig?.day23_globally_open && currentStage < 3) {
     return (
@@ -105,6 +125,13 @@ export default function CareerJourneyView({
         {formTab === 'checklist' && (
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-2xl mx-auto px-4 py-5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-bold text-slate-800">📊 직무 적합도</p>
+                <button onClick={() => setEditMode('checklist')}
+                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium underline underline-offset-2">
+                  수정하기
+                </button>
+              </div>
               <ChecklistSummaryPanel topJob={topJob} topJobPct={topJobPct} jobPcts={jobPcts} />
             </div>
           </div>
@@ -112,6 +139,13 @@ export default function CareerJourneyView({
         {formTab === 'day1' && (
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-2xl mx-auto px-4 py-5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-bold text-slate-800">📝 DAY 1 나의 경험</p>
+                <button onClick={() => setEditMode('day1')}
+                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium underline underline-offset-2">
+                  수정하기
+                </button>
+              </div>
               <Day1ReviewPanel day1Data={day1Data} formConfig={formConfig} />
             </div>
           </div>
@@ -166,6 +200,13 @@ export default function CareerJourneyView({
         {formTab === 'checklist' && (
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-2xl mx-auto px-4 py-5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-bold text-slate-800">📊 직무 적합도</p>
+                <button onClick={() => setEditMode('checklist')}
+                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium underline underline-offset-2">
+                  수정하기
+                </button>
+              </div>
               <ChecklistSummaryPanel topJob={topJob} topJobPct={topJobPct} jobPcts={jobPcts} />
             </div>
           </div>
@@ -173,6 +214,13 @@ export default function CareerJourneyView({
         {formTab === 'day1' && (
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-2xl mx-auto px-4 py-5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-bold text-slate-800">📝 DAY 1 나의 경험</p>
+                <button onClick={() => setEditMode('day1')}
+                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium underline underline-offset-2">
+                  수정하기
+                </button>
+              </div>
               <Day1ReviewPanel day1Data={day1Data} formConfig={formConfig} />
             </div>
           </div>
@@ -180,6 +228,13 @@ export default function CareerJourneyView({
         {formTab === 'day23' && (
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-2xl mx-auto px-4 py-5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-bold text-slate-800">🗺️ DAY 2+3</p>
+                <button onClick={() => setEditMode('day23')}
+                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium underline underline-offset-2">
+                  수정하기
+                </button>
+              </div>
               <Day23ReviewContent day23Data={day23Data} formConfig={formConfig} />
             </div>
           </div>
