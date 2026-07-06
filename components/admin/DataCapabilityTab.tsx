@@ -109,11 +109,37 @@ function quizScoreColor(score: number): string {
   return '#dc2626'
 }
 
+// --- 수강생별 역량 탭과 동일한 티어 계산 ---
+const EXCLUDED_NAMES_SET = new Set([
+  '유세희', '배아영', '최윤이', '김정은', '조유찬',
+  '장예진', '송명석', '전수민', '강지수', '심효리',
+])
+const DATA_Q_MAX_SCORE = 15
+function calcCapInterest(answers: Record<string, number>): number {
+  const raw = DATA_QS.reduce((sum, q) => {
+    const key = answers[q.id]
+    return sum + (key !== undefined ? (ANSWER_WEIGHTS[key] ?? 0) : 0)
+  }, 0)
+  return Math.round(Math.max(0, raw) / DATA_Q_MAX_SCORE * 100)
+}
+function getCapTier(composite: number): 'high' | 'mid' | 'low' {
+  if (composite >= 60) return 'high'
+  if (composite >= 40) return 'mid'
+  return 'low'
+}
+const TIER_FILTER_CONFIG = [
+  { key: 'all'  as const, label: '전체',   color: '#64748b' },
+  { key: 'high' as const, label: '상 그룹', color: '#059669' },
+  { key: 'mid'  as const, label: '중 그룹', color: '#d97706' },
+  { key: 'low'  as const, label: '하 그룹', color: '#dc2626' },
+]
+
 type ScoredStudent = StudentRow & { dataScore: number }
 
 export default function DataCapabilityTab({ students }: { students: StudentRow[] }) {
   const [rankingFilter, setRankingFilter] = useState<GroupKey | 'all'>('all')
   const [expandedGroup, setExpandedGroup] = useState<GroupKey | null>(null)
+  const [tierFilter, setTierFilter] = useState<'all' | 'high' | 'mid' | 'low'>('all')
 
   // CH.5 VOD 진도율 상태
   const [vodProgress, setVodProgress] = useState<Ch5ProgressRow[]>([])
@@ -189,31 +215,6 @@ export default function DataCapabilityTab({ students }: { students: StudentRow[]
     return { withData: withData.length, completed309, completed319, avgAll }
   }, [vodProgress])
 
-  const quizStats = useMemo(() => {
-    const respondents = quizResults.filter(s => s.total_score >= 0)
-    const perfect = respondents.filter(s => s.total_score === 120).length
-    const below60 = respondents.filter(s => s.total_score < 60).length
-    const avg = respondents.length > 0
-      ? respondents.reduce((s, r) => s + r.total_score, 0) / respondents.length
-      : 0
-    const qAccuracy: Record<QuizQKey, number> = {} as Record<QuizQKey, number>
-    for (const k of QUIZ_Q_KEYS) {
-      const correct = respondents.filter(s => s[k]).length
-      qAccuracy[k] = respondents.length > 0 ? Math.round((correct / respondents.length) * 100) : 0
-    }
-    return { respondentCount: respondents.length, perfect, below60, avg, qAccuracy }
-  }, [quizResults])
-
-  const sortedQuiz = useMemo(() => {
-    return quizResults
-      .filter(s => s.total_score >= 0)
-      .sort((a, b) =>
-        quizSortBy === 'score'
-          ? b.total_score - a.total_score
-          : a.student_name.localeCompare(b.student_name, 'ko')
-      )
-  }, [quizResults, quizSortBy])
-
   const scored = useMemo<ScoredStudent[]>(() => {
     return students
       .filter(s => Object.keys(s.answers).length > 0)
@@ -226,6 +227,80 @@ export default function DataCapabilityTab({ students }: { students: StudentRow[]
       })
       .sort((a, b) => b.dataScore - a.dataScore)
   }, [students])
+
+  // 수강생별 역량 탭과 동일한 방식으로 티어 계산
+  const tierMap = useMemo((): Map<number, 'high' | 'mid' | 'low'> => {
+    if (!vodProgress.length || !quizResults.length) return new Map()
+    const active = students.filter(s => !EXCLUDED_NAMES_SET.has(s.student_name))
+    const quizMap = new Map(quizResults.map(r => [r.student_id, r]))
+    const lectureMap = new Map(vodProgress.map(r => [r.student_id, r]))
+
+    const rawInterests = active
+      .filter(s => DATA_QS.some(q => s.answers[q.id] !== undefined))
+      .map(s => calcCapInterest(s.answers))
+    const rawQuiz = quizResults
+      .filter(r => r.total_score >= 0 && !EXCLUDED_NAMES_SET.has(r.student_name))
+      .map(r => Math.round(r.total_score / 120 * 100))
+    const avgInterest = rawInterests.length ? rawInterests.reduce((a, b) => a + b, 0) / rawInterests.length : 50
+    const avgQuiz = rawQuiz.length ? rawQuiz.reduce((a, b) => a + b, 0) / rawQuiz.length : 50
+    const penaltyInterest = Math.round(avgInterest * 0.75)
+    const penaltyQuiz = Math.round(avgQuiz * 0.75)
+
+    const map = new Map<number, 'high' | 'mid' | 'low'>()
+    for (const s of active) {
+      const interestMissing = DATA_QS.every(q => s.answers[q.id] === undefined)
+      const interest = interestMissing ? penaltyInterest : calcCapInterest(s.answers)
+      const qRow = quizMap.get(s.id)
+      const quizMissing = !qRow || qRow.total_score < 0
+      const quiz = quizMissing ? penaltyQuiz : Math.round(qRow!.total_score / 120 * 100)
+      const lRow = lectureMap.get(s.id)
+      const lecture = lRow ? Math.round(lRow.avg_progress) : 0
+      const composite = Math.round(interest * 0.4 + quiz * 0.4 + lecture * 0.2)
+      map.set(s.id, getCapTier(composite))
+    }
+    return map
+  }, [students, quizResults, vodProgress])
+
+  const tierCounts = useMemo(() => ({
+    all:  tierMap.size,
+    high: [...tierMap.values()].filter(t => t === 'high').length,
+    mid:  [...tierMap.values()].filter(t => t === 'mid').length,
+    low:  [...tierMap.values()].filter(t => t === 'low').length,
+  }), [tierMap])
+
+  const filteredScored = useMemo(() => {
+    if (tierFilter === 'all') return scored
+    return scored.filter(s => tierMap.get(s.id) === tierFilter)
+  }, [scored, tierFilter, tierMap])
+
+  const filteredQuizBase = useMemo(() => {
+    const base = quizResults.filter(s => s.total_score >= 0)
+    if (tierFilter === 'all') return base
+    return base.filter(s => tierMap.get(s.student_id) === tierFilter)
+  }, [quizResults, tierFilter, tierMap])
+
+  const quizStats = useMemo(() => {
+    const respondents = filteredQuizBase
+    const perfect = respondents.filter(s => s.total_score === 120).length
+    const below60 = respondents.filter(s => s.total_score < 60).length
+    const avg = respondents.length > 0
+      ? respondents.reduce((s, r) => s + r.total_score, 0) / respondents.length
+      : 0
+    const qAccuracy: Record<QuizQKey, number> = {} as Record<QuizQKey, number>
+    for (const k of QUIZ_Q_KEYS) {
+      const correct = respondents.filter(s => s[k]).length
+      qAccuracy[k] = respondents.length > 0 ? Math.round((correct / respondents.length) * 100) : 0
+    }
+    return { respondentCount: respondents.length, perfect, below60, avg, qAccuracy }
+  }, [filteredQuizBase])
+
+  const sortedQuiz = useMemo(() => {
+    return [...filteredQuizBase].sort((a, b) =>
+      quizSortBy === 'score'
+        ? b.total_score - a.total_score
+        : a.student_name.localeCompare(b.student_name, 'ko')
+    )
+  }, [filteredQuizBase, quizSortBy])
 
   const groupedStudents = useMemo<Record<GroupKey, ScoredStudent[]>>(() => {
     const result: Record<GroupKey, ScoredStudent[]> = {
@@ -244,7 +319,7 @@ export default function DataCapabilityTab({ students }: { students: StudentRow[]
     return DATA_QS.map(q => {
       const dist: { count: number; names: string[] }[] = Array.from({ length: 5 }, () => ({ count: 0, names: [] }))
       let total = 0
-      for (const s of scored) {
+      for (const s of filteredScored) {
         const v = s.answers[q.id]
         if (v !== undefined && v >= 0 && v <= 4) {
           dist[v].count++
@@ -255,7 +330,7 @@ export default function DataCapabilityTab({ students }: { students: StudentRow[]
       const refuse = dist[0].count + dist[1].count
       return { ...q, dist, total, refuse, refusePct: total > 0 ? Math.round((refuse / total) * 100) : 0 }
     }).sort((a, b) => b.refusePct - a.refusePct)
-  }, [scored])
+  }, [filteredScored])
 
   const avgScore = scored.length > 0
     ? (scored.reduce((s, r) => s + r.dataScore, 0) / scored.length).toFixed(1)
@@ -395,10 +470,48 @@ export default function DataCapabilityTab({ students }: { students: StudentRow[]
         </div>
       </div>
 
+      {/* 역량 그룹 필터 (Section 3·5 공통 적용) */}
+      <div className="bg-white rounded-2xl border border-indigo-100 p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <h3 className="text-sm font-bold text-slate-800">🎯 역량 그룹별 필터</h3>
+          <span className="text-[10px] text-slate-400">아래 「질문별 응답 분포」와 「퀴즈 결과」에 함께 적용됩니다</span>
+          {tierMap.size === 0 && (
+            <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+              퀴즈·수강 데이터 로딩 중…
+            </span>
+          )}
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {TIER_FILTER_CONFIG.map(t => {
+            const count = tierCounts[t.key]
+            const isActive = tierFilter === t.key
+            return (
+              <button
+                key={t.key}
+                onClick={() => setTierFilter(t.key)}
+                className={`text-xs font-semibold px-3.5 py-1.5 rounded-full border transition-all ${
+                  isActive ? 'text-white border-transparent' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                }`}
+                style={isActive ? { backgroundColor: t.color, borderColor: t.color } : {}}>
+                {t.label} {t.key !== 'all' ? `${count}명` : `${count}명`}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
       {/* Section 3: 질문별 응답 분포 */}
       <div className="bg-white rounded-2xl border border-slate-100 p-4">
         <h3 className="text-sm font-bold text-slate-800 mb-1">📈 질문별 응답 분포</h3>
-        <p className="text-[11px] text-slate-400 mb-4">거부감(어렵다+잘모르겠다) 비율 높은 순 정렬</p>
+        <p className="text-[11px] text-slate-400 mb-4">
+          거부감(어렵다+잘모르겠다) 비율 높은 순 정렬
+          {tierFilter !== 'all' && (
+            <span className="ml-1.5 font-semibold"
+              style={{ color: TIER_FILTER_CONFIG.find(t => t.key === tierFilter)?.color }}>
+              · {TIER_FILTER_CONFIG.find(t => t.key === tierFilter)?.label} ({filteredScored.length}명)
+            </span>
+          )}
+        </p>
 
         {/* 범례 */}
         <div className="flex gap-3 flex-wrap mb-4">
@@ -634,7 +747,15 @@ export default function DataCapabilityTab({ students }: { students: StudentRow[]
         <div className="flex items-start justify-between gap-2 mb-1">
           <div>
             <h3 className="text-sm font-bold text-slate-800">📝 데이터 리터러시 퀴즈 결과</h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">12문항 × 10점 = 120점 만점 · 2026.06.26 실시</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              12문항 × 10점 = 120점 만점 · 2026.06.26 실시
+              {tierFilter !== 'all' && (
+                <span className="ml-1.5 font-semibold"
+                  style={{ color: TIER_FILTER_CONFIG.find(t => t.key === tierFilter)?.color }}>
+                  · {TIER_FILTER_CONFIG.find(t => t.key === tierFilter)?.label} ({filteredQuizBase.length}명)
+                </span>
+              )}
+            </p>
           </div>
           <button
             onClick={loadQuizResults}
