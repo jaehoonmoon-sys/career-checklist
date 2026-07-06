@@ -8,6 +8,8 @@ import type { FormConfig } from '@/lib/form-config'
 import { setDayGlobalAccess } from '@/app/actions/admin'
 import StudentDetailModal from './StudentDetailModal'
 import FormConfigTab from './FormConfigTab'
+import DataCapabilityTab from './DataCapabilityTab'
+import StudentCapabilityTab from './StudentCapabilityTab'
 
 type FilterType = 'all' | 'incomplete' | JobType
 
@@ -42,7 +44,7 @@ export default function AdminDashboard({
   students: StudentRow[]
   formConfig: FormConfig
 }) {
-  const [mainTab, setMainTab] = useState<'students' | 'form'>('students')
+  const [mainTab, setMainTab] = useState<'students' | 'form' | 'data' | 'capability'>('students')
   const [classifyTab, setClassifyTab] = useState<'checklist' | 'pre'>('checklist')
   const [filter, setFilter] = useState<FilterType>('all')
   const [selectedStudent, setSelectedStudent] = useState<StudentRow | null>(null)
@@ -154,8 +156,10 @@ export default function AdminDashboard({
         {/* 상단 탭 */}
         <div className="max-w-7xl mx-auto px-4 pb-0 flex gap-1 border-t border-slate-50">
           {([
-            { key: 'students', label: '수강생 현황' },
-            { key: 'form',     label: '폼 설정' },
+            { key: 'students',   label: '수강생 현황' },
+            { key: 'form',       label: '폼 설정' },
+            { key: 'data',       label: '데이터 역량' },
+            { key: 'capability', label: '수강생별 역량' },
           ] as const).map(tab => (
             <button key={tab.key} onClick={() => setMainTab(tab.key)}
               className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
@@ -168,6 +172,16 @@ export default function AdminDashboard({
           ))}
         </div>
       </nav>
+
+      {/* 데이터 역량 탭 */}
+      {mainTab === 'data' && (
+        <DataCapabilityTab students={students} />
+      )}
+
+      {/* 수강생별 역량 탭 */}
+      {mainTab === 'capability' && (
+        <StudentCapabilityTab students={students} />
+      )}
 
       {/* 폼 설정 탭 */}
       {mainTab === 'form' && (
