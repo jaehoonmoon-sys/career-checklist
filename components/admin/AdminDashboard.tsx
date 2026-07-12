@@ -10,6 +10,7 @@ import StudentDetailModal from './StudentDetailModal'
 import FormConfigTab from './FormConfigTab'
 import DataCapabilityTab from './DataCapabilityTab'
 import StudentCapabilityTab from './StudentCapabilityTab'
+import ClassAssignmentTab from './ClassAssignmentTab'
 
 type FilterType = 'all' | 'incomplete' | JobType
 
@@ -44,7 +45,7 @@ export default function AdminDashboard({
   students: StudentRow[]
   formConfig: FormConfig
 }) {
-  const [mainTab, setMainTab] = useState<'students' | 'form' | 'data' | 'capability'>('students')
+  const [mainTab, setMainTab] = useState<'students' | 'form' | 'data' | 'capability' | 'assignment'>('students')
   const [classifyTab, setClassifyTab] = useState<'checklist' | 'pre'>('checklist')
   const [filter, setFilter] = useState<FilterType>('all')
   const [selectedStudent, setSelectedStudent] = useState<StudentRow | null>(null)
@@ -160,6 +161,7 @@ export default function AdminDashboard({
             { key: 'form',       label: '폼 설정' },
             { key: 'data',       label: '데이터 역량' },
             { key: 'capability', label: '수강생별 역량' },
+            { key: 'assignment', label: '분반 선택 현황' },
           ] as const).map(tab => (
             <button key={tab.key} onClick={() => setMainTab(tab.key)}
               className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
@@ -181,6 +183,11 @@ export default function AdminDashboard({
       {/* 수강생별 역량 탭 */}
       {mainTab === 'capability' && (
         <StudentCapabilityTab students={students} />
+      )}
+
+      {/* 분반 선택 현황 탭 */}
+      {mainTab === 'assignment' && (
+        <ClassAssignmentTab students={students} />
       )}
 
       {/* 폼 설정 탭 */}
