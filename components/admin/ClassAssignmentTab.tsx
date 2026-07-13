@@ -26,6 +26,26 @@ const SHEET_TO_DB_NAME: Record<string, string> = {
   '엄채현': '엄시은',
 }
 
+// CH.6 실전 프로젝트 팀 편성 (데이터 기반의 마케팅 이해) — DB명 기준
+const CH5_TEAM_MAP: Record<string, number> = {
+  이한솔: 1, 박수빈A: 1, 김상원: 1, 최준혁: 1,
+  강민주: 2, 이세현: 2, 김상협: 2, 선은홍: 2, 이형주: 2,
+  이예린: 3, 최성현: 3, 이승혜: 3, 은동현: 3, 강설빈: 3,
+  송은경: 4, 송현우: 4, 전현우: 4, 전수현: 4, 노주은: 4,
+  한소희: 5, 이정현: 5, 최혜리: 5, 이나래: 5, 김은서: 5,
+  서예지: 6, 박인영: 6, 이윤재: 6, 신채영: 6,
+  방민수: 7, 김예원: 7, 전세진: 7, 최아림: 7, 최수빈: 7,
+  박한솔: 8, 조나연: 8, 권현진: 8, 이란희: 8, 한희주: 8,
+  조민지: 9, 이다연: 9, 송유나: 9, 김경태: 9, 김민서: 9, 장해준: 9,
+  최재성: 10, 허다은: 10, 박서현: 10, 위수아: 10, 박승원: 10,
+  강지혜: 11, 박수빈B: 11, 이동현: 11, 이재민: 11, 최연지: 11, 권예빈: 11,
+  한아영: 12, 이차근: 12, 정민지: 12, 김현지: 12, 이시환: 12,
+  김대한: 13, 심혜원: 13, 김수현: 13, 엄시은: 13, 김소민: 13, 김정근: 13,
+  남강훈: 14, 김강진: 14, 조여름: 14, 최수현: 14, 권민제: 14,
+  최인준: 15, 박효리: 15, 김서현: 15, 박지선: 15, 이건희: 15,
+  이윤영: 16, 이하연: 16, 장혜정: 16, 김정민: 16, 임지명: 16,
+}
+
 const DATA_QS = ['c01', 'c02', 'c03', 'c04', 'c05'] as const
 const DATA_Q_MAX = 15
 
@@ -108,12 +128,14 @@ type StudentEntry = {
   move_reason: string | null
   previous_chosen_class: ClassType | null
   resubmit_count: number
+  team_num: number | null
 }
 
 type UnsubmittedStudent = {
   student_name: string
   tier: TierKey | null
   composite: number | null
+  team_num: number | null
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -167,7 +189,7 @@ function StudentCard({
     chosen_class, current_class, content_pref, content_data_pref, data_pref,
     reason, difficult_parts, moved_by, move_reason,
     interest_score, quiz_score, lecture_score,
-    previous_chosen_class, resubmit_count,
+    previous_chosen_class, resubmit_count, team_num,
   } = entry
 
   const tierCfg = tier ? TIER_CFG[tier] : null
@@ -195,6 +217,12 @@ function StudentCard({
             <span className="text-sm font-semibold text-slate-800 flex-1 truncate min-w-0">
               {student_name}
             </span>
+
+            {team_num !== null && (
+              <span className="text-[10px] bg-indigo-50 text-indigo-500 border border-indigo-100 px-1.5 py-0.5 rounded-full shrink-0 font-semibold tabular-nums">
+                {team_num}팀
+              </span>
+            )}
 
             {is_overridden && (
               <span className="text-[9px] bg-slate-400 text-white px-1.5 py-0.5 rounded-full shrink-0 font-medium">
@@ -644,6 +672,7 @@ export default function ClassAssignmentTab({ students: allStudents }: { students
         move_reason: override?.move_reason ?? null,
         previous_chosen_class: row.previous_chosen_class,
         resubmit_count: row.resubmit_count ?? 1,
+        team_num: CH5_TEAM_MAP[dbName] ?? null,
       }
     }),
   [selectionData, tierMap, overrideMap])
@@ -661,6 +690,7 @@ export default function ClassAssignmentTab({ students: allStudents }: { students
           student_name: s.student_name,
           tier: td?.tier ?? null,
           composite: td?.composite ?? null,
+          team_num: CH5_TEAM_MAP[s.student_name] ?? null,
         }
       })
   }, [students, selectionData, tierMap])
@@ -972,14 +1002,21 @@ export default function ClassAssignmentTab({ students: allStudents }: { students
                   <div key={s.student_name}
                     className="bg-white rounded-lg border border-slate-200 px-3 py-2 flex items-center justify-between gap-2">
                     <span className="text-xs font-medium text-slate-700">{s.student_name}</span>
-                    {tierCfg ? (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
-                        style={{ color: tierCfg.color, backgroundColor: tierCfg.bg }}>
-                        {tierCfg.label}
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-slate-300 shrink-0">미확인</span>
-                    )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {s.team_num !== null && (
+                        <span className="text-[10px] bg-indigo-50 text-indigo-500 border border-indigo-100 px-1.5 py-0.5 rounded-full font-semibold tabular-nums">
+                          {s.team_num}팀
+                        </span>
+                      )}
+                      {tierCfg ? (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                          style={{ color: tierCfg.color, backgroundColor: tierCfg.bg }}>
+                          {tierCfg.label}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-300">미확인</span>
+                      )}
+                    </div>
                   </div>
                 )
               })}
